@@ -8,7 +8,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
 
   const handleChange = (e) => {
     const { name, value } = e.target;
