@@ -4,7 +4,9 @@ import EditProfile from "./EditProfile";
 import Navbar from "./Navbar";
 import CreateBlog from "./CreateBlog";
 import Publish from "./Publish";
+import Notifications from "./Notifications";
 import axios from "axios";
+import { getSocket } from "../utils/socket";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("create-blog");
@@ -12,6 +14,7 @@ export default function Dashboard() {
   const [blogs, setBlogs] = useState([]);
   const [loadingBlogs, setLoadingBlogs] = useState(false);
   const [commentsData, setCommentsData] = useState({}); // store blogId => comments[]
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const token = localStorage.getItem("token");
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
@@ -31,6 +34,38 @@ export default function Dashboard() {
     };
     fetchUserData();
   }, [token]);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!token) return;
+      try {
+        const res = await axios.get(`${API_URL}/api/notifications`, axiosConfig);
+        setUnreadCount(res.data.unreadCount || 0);
+      } catch (err) {
+        console.error("Error fetching notification count:", err);
+      }
+    };
+
+    fetchUnreadCount();
+  }, [token]);
+
+  useEffect(() => {
+    if (!userData?._id) return;
+
+    const socket = getSocket();
+    if (!socket.connected) socket.connect();
+    socket.emit("join-user", userData._id);
+
+    const handleNewNotification = () => {
+      setUnreadCount((prev) => prev + 1);
+    };
+
+    socket.on("notification:new", handleNewNotification);
+
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+    };
+  }, [userData?._id]);
 
   // Fetch user blogs
   useEffect(() => {
@@ -174,6 +209,9 @@ export default function Dashboard() {
       case "edit-profile":
         return <EditProfile userData={userData} setUserData={setUserData} />;
 
+      case "notifications":
+        return <Notifications onUnreadCountChange={setUnreadCount} />;
+
       default:
         return <div>Welcome!</div>;
     }
@@ -183,7 +221,7 @@ export default function Dashboard() {
     <>
       <Navbar userData={userData} />
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} unreadCount={unreadCount} />
         <div className="flex-1 p-6">{renderContent()}</div>
       </div>
     </>

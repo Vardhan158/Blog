@@ -32,6 +32,7 @@ exports.registerUser = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         profileImage: user.avatar,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -65,6 +66,7 @@ exports.loginUser = async (req, res) => {
           email: user.email,
           avatar: user.avatar,
           profileImage: user.avatar,
+          role: user.role,
         },
       });
     } else {

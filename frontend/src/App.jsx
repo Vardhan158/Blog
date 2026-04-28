@@ -10,6 +10,7 @@ import About from './components/About'
 import Dashboard from './components/Dashboard'
 import Publish from './components/Publish'
 import Article from './pages/Article'
+import AdminDashboard from './components/AdminDashboard'
 
 function App() {
 
@@ -27,6 +28,7 @@ function App() {
         <Route path='/dashboard' element={<Dashboard/>}/>
         <Route path='/about' element={<About/>}/>
         <Route path='/articles' element={<Article/>}/>
+        <Route path='/admin/dashboard' element={<AdminDashboard/>}/>
        </Routes>
        </BrowserRouter>
 

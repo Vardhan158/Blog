@@ -1,5 +1,6 @@
 const Comment = require("../models/Comment");
 const Blog = require("../models/Blog");
+const { createNotification } = require("./notificationController");
 
 // Add a comment to a blog
 const addComment = async (req, res) => {
@@ -18,11 +19,24 @@ const addComment = async (req, res) => {
 
     // ✅ Add comment reference to the blog
     blog.comments = blog.comments || [];
-    blog.comments.push(comment._id);
+    blog.comments.push({
+      userId: req.user._id,
+      userName: req.user.name || req.user.username || "Anonymous",
+      comment: text,
+      createdAt: new Date(),
+    });
     await blog.save();
 
     // Populate user info for frontend convenience
     await comment.populate("user", "name avatar");
+
+    await createNotification({
+      recipient: blog.userId,
+      actor: req.user._id,
+      blog: blog._id,
+      type: "comment",
+      message: `${req.user.name || "Someone"} commented on your blog "${blog.title}".`,
+    });
 
     res.status(201).json(comment);
   } catch (err) {

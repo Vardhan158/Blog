@@ -1,11 +1,12 @@
 import React from "react";
-import { FaPenFancy, FaFileAlt, FaComments, FaUserEdit } from "react-icons/fa";
+import { FaBell, FaPenFancy, FaFileAlt, FaComments, FaUserEdit } from "react-icons/fa";
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar({ activeTab, setActiveTab, unreadCount = 0 }) {
   const menuItems = [
     { id: "create-blog", label: "Create Blog", icon: <FaPenFancy /> },
     { id: "published-blogs", label: "Published Blogs", icon: <FaFileAlt /> },
     { id: "comments", label: "Comments", icon: <FaComments /> },
+    { id: "notifications", label: "Notifications", icon: <FaBell />, badge: unreadCount },
     { id: "edit-profile", label: "Edit Profile", icon: <FaUserEdit /> },
   ];
 
@@ -28,6 +29,11 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           >
             <span className="text-lg">{item.icon}</span>
             <span>{item.label}</span>
+            {item.badge > 0 && (
+              <span className="ml-auto min-w-6 rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+                {item.badge}
+              </span>
+            )}
           </button>
         ))}
       </nav>

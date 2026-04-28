@@ -24,15 +24,29 @@ const Login = () => {
       const res = await axios.post(`${API_URL}/auth/login`, formData);
 
       if (res.data.token) {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user || {}));
-        localStorage.setItem("username", res.data.user?.name || res.data.user?.username || "");
-        if (res.data.user?.avatar || res.data.user?.profileImage) {
-          localStorage.setItem("profileImage", res.data.user.avatar || res.data.user.profileImage);
+        const user = res.data.user || {};
+
+        if (user.role === "admin") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("username");
+          localStorage.removeItem("profileImage");
+          localStorage.setItem("adminToken", res.data.token);
+          localStorage.setItem("adminUser", JSON.stringify(user));
+          navigate("/admin/dashboard", { replace: true });
+          return;
         }
 
-        // ✅ Navigate instantly with state for success toast
-        navigate("/home", { replace: true, state: { toast: "Login Successful!" } });
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("username", user.name || user.username || "");
+        if (user.avatar || user.profileImage) {
+          localStorage.setItem("profileImage", user.avatar || user.profileImage);
+        }
+
+        navigate("/dashboard", { replace: true, state: { toast: "Login Successful!" } });
       }
     } catch (err) {
       console.error(err.response?.data || err);
@@ -68,7 +82,7 @@ const Login = () => {
             onClick={() => setErrorMsg(null)}
             className="cursor-pointer mb-auto text-slate-400 hover:text-slate-600 active:scale-95 transition"
           >
-            ✕
+            x
           </button>
         </div>
       )}
@@ -139,7 +153,7 @@ const Login = () => {
         </button>
 
         <p className="mt-4 text-gray-500 text-sm mb-8">
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <a href="/signup" className="text-indigo-500 hover:underline">
             Sign Up
           </a>

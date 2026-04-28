@@ -1,6 +1,11 @@
 const Blog = require("../models/Blog");
+const User = require("../models/User");
 const cloudinary = require("../cloudinary");
 const mongoose = require("mongoose")
+const {
+  createNotification,
+  createNotificationsForRecipients,
+} = require("./notificationController");
 
 // Helper: Upload image to Cloudinary
 const uploadToCloudinary = (fileBuffer) => {
@@ -43,6 +48,23 @@ const publishBlog = async (req, res) => {
       comments: [],
     });
 
+    await createNotification({
+      recipient: userId,
+      actor: userId,
+      blog: newBlog._id,
+      type: "post",
+      message: `Your blog "${title}" was published successfully.`,
+    });
+
+    const recipients = await User.find({ _id: { $ne: userId } }).distinct("_id");
+    await createNotificationsForRecipients({
+      recipients,
+      actor: userId,
+      blog: newBlog._id,
+      type: "post",
+      message: `${req.user?.name || "Someone"} published a new blog "${title}".`,
+    });
+
     res.status(201).json({ success: true, message: "Blog published successfully", blog: newBlog });
   } catch (err) {
     console.error("Error publishing blog:", err);
@@ -83,10 +105,22 @@ const likeBlog = async (req, res) => {
     if (!blog) return res.status(404).json({ message: "Blog not found" });
 
     const index = blog.likes.findIndex((id) => id.toString() === userId.toString());
-    if (index === -1) blog.likes.push(userId);
+    const isNewLike = index === -1;
+    if (isNewLike) blog.likes.push(userId);
     else blog.likes.splice(index, 1);
 
     await blog.save();
+
+    if (isNewLike) {
+      await createNotification({
+        recipient: blog.userId,
+        actor: userId,
+        blog: blog._id,
+        type: "like",
+        message: `${req.user?.name || "Someone"} liked your blog "${blog.title}".`,
+      });
+    }
+
     res.status(200).json({ success: true, message: "Blog like updated", likesCount: blog.likes.length });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error updating like", error: err.message });
@@ -108,8 +142,16 @@ const commentOnBlog = async (req, res) => {
     const blog = await Blog.findById(blogId);
     if (!blog) return res.status(404).json({ message: "Blog not found" });
 
-    blog.comments.push({ name: userName, text: comment, avatar, createdAt: new Date() });
+    blog.comments.push({ userId, userName, comment, avatar, createdAt: new Date() });
     await blog.save();
+
+    await createNotification({
+      recipient: blog.userId,
+      actor: userId,
+      blog: blog._id,
+      type: "comment",
+      message: `${userName} commented on your blog "${blog.title}".`,
+    });
 
     res.json({ success: true, message: "Comment added successfully", commentsCount: blog.comments.length });
   } catch (err) {
