@@ -4,7 +4,7 @@ import { FaBell, FaCheck } from "react-icons/fa";
 import { getSocket } from "../utils/socket";
 
 const Notifications = ({ onUnreadCountChange }) => {
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
   const token = localStorage.getItem("token");
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
