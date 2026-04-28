@@ -1,5 +1,16 @@
 const Notification = require("../models/Notification");
 const { emitToUser } = require("../socket");
+const { sendPushNotification } = require("../utils/webPush");
+
+const deliverNotification = async (notification) => {
+  emitToUser(notification.recipient, "notification:new", notification);
+  await sendPushNotification(notification.recipient, {
+    title: "BlogPage",
+    body: notification.message,
+    url: notification.blog?._id ? `/article/${notification.blog._id}` : "/dashboard",
+    notificationId: notification._id?.toString(),
+  });
+};
 
 const createNotification = async ({ recipient, actor, blog, type, message }) => {
   if (!recipient || !type || !message) return null;
@@ -8,19 +19,43 @@ const createNotification = async ({ recipient, actor, blog, type, message }) => 
     return null;
   }
 
-  const notification = await Notification.create({
-    recipient,
-    actor,
-    blog,
-    type,
-    message,
-  });
+  let notification;
+
+  if (type === "like" && actor && blog) {
+    notification = await Notification.findOneAndUpdate(
+      {
+        recipient,
+        actor,
+        blog,
+        type,
+      },
+      {
+        $set: {
+          message,
+          read: false,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+  } else {
+    notification = await Notification.create({
+      recipient,
+      actor,
+      blog,
+      type,
+      message,
+    });
+  }
 
   const populatedNotification = await Notification.findById(notification._id)
     .populate("actor", "name username avatar")
     .populate("blog", "title");
 
-  emitToUser(recipient, "notification:new", populatedNotification);
+  await deliverNotification(populatedNotification);
   return populatedNotification;
 };
 
@@ -51,9 +86,9 @@ const createNotificationsForRecipients = async ({ recipients, actor, blog, type,
     .populate("actor", "name username avatar")
     .populate("blog", "title");
 
-  populatedNotifications.forEach((notification) => {
-    emitToUser(notification.recipient, "notification:new", notification);
-  });
+  await Promise.all(
+    populatedNotifications.map((notification) => deliverNotification(notification))
+  );
 
   return populatedNotifications;
 };

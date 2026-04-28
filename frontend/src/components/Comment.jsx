@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { FaHeart } from "react-icons/fa";
 import axios from "axios";
+import { getToken } from "../utils/authStorage";
 
 const Comment = ({ blogId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const token = localStorage.getItem("token"); // get JWT token
+  const token = getToken();
 
   useEffect(() => {
     const fetchComments = async () => {

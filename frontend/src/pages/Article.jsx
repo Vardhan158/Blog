@@ -3,6 +3,7 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { FaHeart, FaBookOpen, FaSearch } from "react-icons/fa";
+import { getToken, getUser } from "../utils/authStorage";
 
 export default function Article() {
   const [blogs, setBlogs] = useState([]);
@@ -15,7 +16,7 @@ export default function Article() {
   const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = getUser();
     if (user && user._id) setUserId(user._id);
   }, []);
 
@@ -55,7 +56,7 @@ export default function Article() {
   // ✅ Like handler
   const handleLike = async (blogId) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) {
         alert("Please log in to like blogs.");
         return;

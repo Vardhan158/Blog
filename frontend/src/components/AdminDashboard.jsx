@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FaBlog, FaComments, FaSignOutAlt, FaUsers } from "react-icons/fa";
+import {
+  clearAdminSession,
+  clearLegacyLocalAuth,
+  getAdminToken,
+} from "../utils/authStorage";
 
 const tabs = [
   { id: "blogs", label: "Blogs", icon: <FaBlog /> },
@@ -32,7 +37,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const token = localStorage.getItem("adminToken");
+  const token = getAdminToken();
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -54,8 +59,8 @@ const AdminDashboard = () => {
         });
       } catch (err) {
         if ([401, 403].includes(err.response?.status)) {
-          localStorage.removeItem("adminToken");
-          localStorage.removeItem("adminUser");
+          clearAdminSession();
+          clearLegacyLocalAuth();
           navigate("/login", { replace: true });
           return;
         }
@@ -71,8 +76,8 @@ const AdminDashboard = () => {
   const rows = useMemo(() => dashboard[activeTab] || [], [activeTab, dashboard]);
 
   const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminUser");
+    clearAdminSession();
+    clearLegacyLocalAuth();
     navigate("/login", { replace: true });
   };
 

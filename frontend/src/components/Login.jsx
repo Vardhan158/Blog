@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import {
+  clearAdminSession,
+  clearLegacyLocalAuth,
+  clearUserSession,
+  setAdminToken,
+  setAdminUser,
+  setProfileImage,
+  setToken,
+  setUser,
+  setUsername,
+} from "../utils/authStorage";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -27,23 +38,21 @@ const Login = () => {
         const user = res.data.user || {};
 
         if (user.role === "admin") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          localStorage.removeItem("username");
-          localStorage.removeItem("profileImage");
-          localStorage.setItem("adminToken", res.data.token);
-          localStorage.setItem("adminUser", JSON.stringify(user));
+          clearUserSession();
+          clearLegacyLocalAuth();
+          setAdminToken(res.data.token);
+          setAdminUser(user);
           navigate("/admin/dashboard", { replace: true });
           return;
         }
 
-        localStorage.removeItem("adminToken");
-        localStorage.removeItem("adminUser");
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("username", user.name || user.username || "");
+        clearAdminSession();
+        clearLegacyLocalAuth();
+        setToken(res.data.token);
+        setUser(user);
+        setUsername(user.name || user.username || "");
         if (user.avatar || user.profileImage) {
-          localStorage.setItem("profileImage", user.avatar || user.profileImage);
+          setProfileImage(user.avatar || user.profileImage);
         }
 
         navigate("/dashboard", { replace: true, state: { toast: "Login Successful!" } });

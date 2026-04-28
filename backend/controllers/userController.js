@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Blog = require("../models/Blog");
 const cloudinary = require("../cloudinary");
+const { publicVapidKey } = require("../utils/webPush");
 
 const getProfileImageUrl = (image, req) => {
   if (!image) return "";
@@ -175,6 +176,53 @@ const getUserBlogs = async (req, res) => {
   }
 };
 
+const subscribeToPush = async (req, res) => {
+  try {
+    const subscription = req.body;
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      return res.status(400).json({ success: false, message: "Invalid push subscription" });
+    }
+
+    await User.updateMany(
+      { "pushSubscriptions.endpoint": subscription.endpoint },
+      { $pull: { pushSubscriptions: { endpoint: subscription.endpoint } } }
+    );
+
+    await User.updateOne(
+      { _id: req.user._id },
+      { $push: { pushSubscriptions: subscription } }
+    );
+
+    res.json({ success: true, message: "Push subscription saved" });
+  } catch (err) {
+    console.error("Error saving push subscription:", err);
+    res.status(500).json({ success: false, message: "Error saving push subscription" });
+  }
+};
+
+const unsubscribeFromPush = async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    if (!endpoint) {
+      return res.status(400).json({ success: false, message: "Subscription endpoint is required" });
+    }
+
+    await User.updateOne(
+      { _id: req.user._id },
+      { $pull: { pushSubscriptions: { endpoint } } }
+    );
+
+    res.json({ success: true, message: "Push subscription removed" });
+  } catch (err) {
+    console.error("Error removing push subscription:", err);
+    res.status(500).json({ success: false, message: "Error removing push subscription" });
+  }
+};
+
+const getPushPublicKey = async (req, res) => {
+  res.json({ success: true, publicKey: publicVapidKey });
+};
+
 module.exports = {
   uploadProfileImage,
   getDashboardSummary,
@@ -182,4 +230,7 @@ module.exports = {
   getProfile,
   updateProfile,
   getUserBlogs,
+  subscribeToPush,
+  unsubscribeFromPush,
+  getPushPublicKey,
 };

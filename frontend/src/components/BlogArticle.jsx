@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import axios from "axios";
 import DOMPurify from "dompurify";
+import { getToken } from "../utils/authStorage";
 
 const BlogArticle = () => {
   const { id } = useParams();
@@ -12,7 +13,7 @@ const BlogArticle = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newComment, setNewComment] = useState("");
-  const token = localStorage.getItem("token"); // assuming JWT auth
+  const token = getToken();
 
   const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
 

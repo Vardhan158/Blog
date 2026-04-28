@@ -6,7 +6,12 @@ import CreateBlog from "./CreateBlog";
 import Publish from "./Publish";
 import Notifications from "./Notifications";
 import axios from "axios";
-import { getSocket } from "../utils/socket";
+import { connectSocketForUser } from "../utils/socket";
+import { getToken } from "../utils/authStorage";
+import {
+  enablePushNotifications,
+  showBrowserNotification,
+} from "../utils/pushNotifications";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("create-blog");
@@ -16,7 +21,7 @@ export default function Dashboard() {
   const [commentsData, setCommentsData] = useState({}); // store blogId => comments[]
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const token = localStorage.getItem("token");
+  const token = getToken();
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
   const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
 
@@ -50,14 +55,22 @@ export default function Dashboard() {
   }, [token]);
 
   useEffect(() => {
+    enablePushNotifications().catch((error) => {
+      console.error("Unable to enable push notifications:", error);
+    });
+  }, []);
+
+  useEffect(() => {
     if (!userData?._id) return;
 
-    const socket = getSocket();
-    if (!socket.connected) socket.connect();
-    socket.emit("join-user", userData._id);
+    const socket = connectSocketForUser(userData._id);
+    if (!socket) return;
 
-    const handleNewNotification = () => {
+    const handleNewNotification = (notification) => {
       setUnreadCount((prev) => prev + 1);
+      showBrowserNotification(notification).catch((error) => {
+        console.error("Unable to show browser notification:", error);
+      });
     };
 
     socket.on("notification:new", handleNewNotification);

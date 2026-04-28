@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import axios from "axios";
+import { clearLegacyLocalAuth, clearUserSession, getToken } from "../utils/authStorage";
 
 const CreateBlog = ({ userData, setActiveTab }) => {
   const [title, setTitle] = useState("");
@@ -18,7 +19,7 @@ const CreateBlog = ({ userData, setActiveTab }) => {
 
   // Load JWT token on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    const storedToken = getToken();
     if (!storedToken) {
       alert("You must be logged in to publish a blog.");
       return;
@@ -124,7 +125,8 @@ const CreateBlog = ({ userData, setActiveTab }) => {
       console.error(err.response?.data || err);
       if (err.response?.status === 401) {
         alert("Unauthorized! Please login again.");
-        localStorage.removeItem("token");
+        clearUserSession();
+        clearLegacyLocalAuth();
       } else {
         alert(err.response?.data?.message || "Error publishing blog. Try again!");
       }

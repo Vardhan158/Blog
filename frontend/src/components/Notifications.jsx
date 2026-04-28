@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { FaBell, FaCheck } from "react-icons/fa";
-import { getSocket } from "../utils/socket";
+import { connectSocketForUser } from "../utils/socket";
+import { getToken, getUser } from "../utils/authStorage";
 
 const Notifications = ({ onUnreadCountChange }) => {
-  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
-  const token = localStorage.getItem("token");
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const token = getToken();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
@@ -34,15 +35,17 @@ const Notifications = ({ onUnreadCountChange }) => {
   }, []);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = getUser() || {};
     if (!user?._id) return;
 
-    const socket = getSocket();
-    if (!socket.connected) socket.connect();
-    socket.emit("join-user", user._id);
+    const socket = connectSocketForUser(user._id);
+    if (!socket) return;
 
     const handleNewNotification = (notification) => {
       setNotifications((prev) => [notification, ...prev]);
+      onUnreadCountChange?.((prev) =>
+        typeof prev === "number" ? prev + 1 : prev
+      );
     };
 
     socket.on("notification:new", handleNewNotification);

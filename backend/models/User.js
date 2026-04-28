@@ -10,6 +10,19 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ["user", "admin"], default: "user" },
+  pushSubscriptions: {
+    type: [
+      {
+        endpoint: { type: String, required: true },
+        expirationTime: { type: Date, default: null },
+        keys: {
+          p256dh: { type: String, required: true },
+          auth: { type: String, required: true },
+        },
+      },
+    ],
+    default: [],
+  },
 });
 
 // Encrypt password before saving

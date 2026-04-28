@@ -9,6 +9,9 @@ const {
   getProfile,
   updateProfile,
   getUserBlogs,
+  subscribeToPush,
+  unsubscribeFromPush,
+  getPushPublicKey,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -54,6 +57,9 @@ router.put("/update", authMiddleware, updateProfile);
 
 // ✅ Get user blogs (user dashboard)
 router.get("/user-blogs", authMiddleware, getUserBlogs);
+router.get("/push/public-key", authMiddleware, getPushPublicKey);
+router.post("/push/subscribe", authMiddleware, subscribeToPush);
+router.post("/push/unsubscribe", authMiddleware, unsubscribeFromPush);
 
 // ======================= Export =======================
 module.exports = router;

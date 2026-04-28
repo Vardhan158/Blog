@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import md5 from "md5";
 import axios from "axios";
 import { FaBell, FaGlobe, FaLock, FaShieldAlt, FaUserCog } from "react-icons/fa";
+import { getToken, getUser, setProfileImage, setUser } from "../utils/authStorage";
 
 const EditProfile = ({ userData, setUserData }) => {
   const [name, setName] = useState("");
@@ -17,11 +18,7 @@ const EditProfile = ({ userData, setUserData }) => {
   };
 
   const getStoredUser = () => {
-    try {
-      return JSON.parse(localStorage.getItem("user")) || {};
-    } catch {
-      return {};
-    }
+    return getUser() || {};
   };
 
   const getImageUrl = (user) => {
@@ -39,14 +36,14 @@ const EditProfile = ({ userData, setUserData }) => {
       profileImage: imageUrl,
     };
 
-    localStorage.setItem("user", JSON.stringify(nextUser));
-    localStorage.setItem("profileImage", imageUrl);
+    setUser(nextUser);
+    setProfileImage(imageUrl);
     if (setUserData) setUserData(nextUser);
   };
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       if (!token) throw new Error("No authentication token found.");
 
       const res = await axios.get(`${API_URL}/api/user/profile`, {
@@ -79,7 +76,7 @@ const EditProfile = ({ userData, setUserData }) => {
     formData.append("profileImage", e.target.files[0]);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const res = await axios.post(`${API_URL}/api/user/upload-profile`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,

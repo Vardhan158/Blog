@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { clearLegacyLocalAuth, clearUserSession, getToken } from "../utils/authStorage";
+import { disablePushNotifications } from "../utils/pushNotifications";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
@@ -8,18 +10,22 @@ const Navbar = () => {
 
   // Check login status on mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     setIsLoggedIn(!!token);
   }, []);
 
   // Handle logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("user");
-    localStorage.removeItem("profileImage");
-    setIsLoggedIn(false);
-    navigate("/"); // redirect to login or home
+  const handleLogout = async () => {
+    try {
+      await disablePushNotifications();
+    } catch (error) {
+      console.error("Unable to disable push notifications:", error);
+    } finally {
+      clearUserSession();
+      clearLegacyLocalAuth();
+      setIsLoggedIn(false);
+      navigate("/"); // redirect to login or home
+    }
   };
 
   const handleHomeNav = () => navigate("/home");
