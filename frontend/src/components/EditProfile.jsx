@@ -8,7 +8,7 @@ const EditProfile = ({ userData, setUserData }) => {
   const [email, setEmail] = useState("");
   const [profileImage, setProfileImage] = useState(null);
   const [error, setError] = useState("");
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
 
   const getGravatar = (userEmail) => {
     if (!userEmail) return "/default-profile.png";
