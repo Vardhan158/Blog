@@ -1,54 +1,81 @@
 const USER_KEYS = ["token", "user", "username", "profileImage"];
 const ADMIN_KEYS = ["adminToken", "adminUser"];
 
-const storage = typeof window !== "undefined" ? window.sessionStorage : null;
+const sessionStorageRef = typeof window !== "undefined" ? window.sessionStorage : null;
+const localStorageRef = typeof window !== "undefined" ? window.localStorage : null;
+
+const readRaw = (key) => {
+  const sessionValue = sessionStorageRef?.getItem(key);
+  if (sessionValue !== null && sessionValue !== undefined) {
+    return sessionValue;
+  }
+
+  const localValue = localStorageRef?.getItem(key);
+  if (localValue !== null && localValue !== undefined && sessionStorageRef) {
+    sessionStorageRef.setItem(key, localValue);
+  }
+
+  return localValue;
+};
 
 const readJson = (key) => {
-  if (!storage) return null;
+  const value = readRaw(key);
+  if (!value) return null;
 
   try {
-    const value = storage.getItem(key);
-    return value ? JSON.parse(value) : null;
+    return JSON.parse(value);
   } catch {
     return null;
   }
 };
 
 const writeJson = (key, value) => {
-  if (!storage) return;
-  storage.setItem(key, JSON.stringify(value));
+  const serialized = JSON.stringify(value);
+  sessionStorageRef?.setItem(key, serialized);
+  localStorageRef?.setItem(key, serialized);
 };
 
-export const getToken = () => storage?.getItem("token") || null;
-export const setToken = (value) => storage?.setItem("token", value);
+const writeValue = (key, value) => {
+  sessionStorageRef?.setItem(key, value);
+  localStorageRef?.setItem(key, value);
+};
 
+export const getToken = () => readRaw("token") || null;
+export const setToken = (value) => writeValue("token", value);
 export const getUser = () => readJson("user");
 export const setUser = (value) => writeJson("user", value);
 
-export const getUsername = () => storage?.getItem("username") || "";
-export const setUsername = (value) => storage?.setItem("username", value);
+export const getUsername = () => readRaw("username") || "";
+export const setUsername = (value) => writeValue("username", value);
 
-export const getProfileImage = () => storage?.getItem("profileImage") || "";
-export const setProfileImage = (value) => storage?.setItem("profileImage", value);
+export const getProfileImage = () => readRaw("profileImage") || "";
+export const setProfileImage = (value) => writeValue("profileImage", value);
 
-export const getAdminToken = () => storage?.getItem("adminToken") || null;
-export const setAdminToken = (value) => storage?.setItem("adminToken", value);
+export const getAdminToken = () => readRaw("adminToken") || null;
+export const setAdminToken = (value) => writeValue("adminToken", value);
 
 export const getAdminUser = () => readJson("adminUser");
 export const setAdminUser = (value) => writeJson("adminUser", value);
 
 export const clearUserSession = () => {
-  if (!storage) return;
-  USER_KEYS.forEach((key) => storage.removeItem(key));
+  USER_KEYS.forEach((key) => {
+    sessionStorageRef?.removeItem(key);
+    localStorageRef?.removeItem(key);
+  });
 };
 
 export const clearAdminSession = () => {
-  if (!storage) return;
-  ADMIN_KEYS.forEach((key) => storage.removeItem(key));
+  ADMIN_KEYS.forEach((key) => {
+    sessionStorageRef?.removeItem(key);
+    localStorageRef?.removeItem(key);
+  });
 };
 
 export const clearLegacyLocalAuth = () => {
   if (typeof window === "undefined") return;
 
-  [...USER_KEYS, ...ADMIN_KEYS].forEach((key) => window.localStorage.removeItem(key));
+  [...USER_KEYS, ...ADMIN_KEYS].forEach((key) => {
+    window.localStorage.removeItem(key);
+    window.sessionStorage.removeItem(key);
+  });
 };
