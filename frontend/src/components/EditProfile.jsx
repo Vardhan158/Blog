@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import md5 from "md5";
 import axios from "axios";
-import { FaShieldAlt, FaUserCog, FaLock, FaBell, FaGlobe } from "react-icons/fa";
+import { FaBell, FaGlobe, FaLock, FaShieldAlt, FaUserCog } from "react-icons/fa";
 
 const EditProfile = ({ userData, setUserData }) => {
   const [name, setName] = useState("");
@@ -10,14 +10,40 @@ const EditProfile = ({ userData, setUserData }) => {
   const [error, setError] = useState("");
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // ✅ Gravatar fallback
-  const getGravatar = (email) => {
-    if (!email) return "/default-profile.png";
-    const hash = md5(email.trim().toLowerCase());
+  const getGravatar = (userEmail) => {
+    if (!userEmail) return "/default-profile.png";
+    const hash = md5(userEmail.trim().toLowerCase());
     return `https://www.gravatar.com/avatar/${hash}?d=identicon`;
   };
 
-  // ✅ Fetch profile data
+  const getStoredUser = () => {
+    try {
+      return JSON.parse(localStorage.getItem("user")) || {};
+    } catch {
+      return {};
+    }
+  };
+
+  const getImageUrl = (user) => {
+    const image = user?.avatar || user?.profileImage;
+    if (!image) return getGravatar(user?.email);
+    return image.startsWith("http") ? image : `${API_URL}/uploads/${image}`;
+  };
+
+  const persistUser = (user) => {
+    const imageUrl = getImageUrl(user);
+    const nextUser = {
+      ...getStoredUser(),
+      ...user,
+      avatar: imageUrl,
+      profileImage: imageUrl,
+    };
+
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    localStorage.setItem("profileImage", imageUrl);
+    if (setUserData) setUserData(nextUser);
+  };
+
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -30,24 +56,15 @@ const EditProfile = ({ userData, setUserData }) => {
       const user = res.data.user || res.data;
       if (!user || !user.email) throw new Error("Invalid profile data received.");
 
+      const imageUrl = getImageUrl(user);
       setName(user.name || user.username || "");
       setEmail(user.email || "");
-
-      if (user.profileImage) {
-        setProfileImage(
-          user.profileImage.startsWith("http")
-            ? user.profileImage
-            : `${API_URL}/uploads/${user.profileImage}`
-        );
-      } else {
-        setProfileImage(getGravatar(user.email));
-      }
-
-      if (setUserData) setUserData(user);
+      setProfileImage(imageUrl);
+      persistUser({ ...user, avatar: imageUrl, profileImage: imageUrl });
       setError("");
     } catch (err) {
       console.error("Error fetching profile:", err);
-      setError("Failed to load profile. Please make sure you’re logged in.");
+      setError("Failed to load profile. Please make sure you're logged in.");
     }
   };
 
@@ -55,13 +72,11 @@ const EditProfile = ({ userData, setUserData }) => {
     fetchProfile();
   }, []);
 
-  // ✅ Upload Profile Image
   const handleImageChange = async (e) => {
     if (!e.target.files?.[0]) return;
-    const file = e.target.files[0];
 
     const formData = new FormData();
-    formData.append("profileImage", file);
+    formData.append("profileImage", e.target.files[0]);
 
     try {
       const token = localStorage.getItem("token");
@@ -73,15 +88,9 @@ const EditProfile = ({ userData, setUserData }) => {
       });
 
       const user = res.data.user || {};
-      const uploadedImage = user.profileImage || "";
-
-      const imageUrl = uploadedImage.startsWith("http")
-        ? uploadedImage
-        : `${API_URL}/uploads/${uploadedImage}`;
-
+      const imageUrl = getImageUrl(user);
       setProfileImage(imageUrl);
-      localStorage.setItem("profileImage", imageUrl);
-      if (setUserData) setUserData(user);
+      persistUser({ ...user, avatar: imageUrl, profileImage: imageUrl });
       alert("Profile picture updated!");
     } catch (err) {
       console.error("Error uploading profile image:", err);
@@ -105,20 +114,20 @@ const EditProfile = ({ userData, setUserData }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10">
-      {/* Profile Section */}
       <div className="bg-white shadow-lg rounded-3xl w-full max-w-4xl p-10 flex flex-col md:flex-row gap-10">
-        {/* LEFT SIDE */}
         <div className="flex flex-col items-center md:w-1/2">
-          <div
+          <button
+            type="button"
             className="w-40 h-40 rounded-full border-4 border-gray-300 shadow-md overflow-hidden cursor-pointer"
             onClick={() => document.getElementById("profileInput").click()}
+            aria-label="Upload profile picture"
           >
             <img
               src={profileImage || "/default-profile.png"}
               alt="Profile"
               className="w-full h-full object-cover"
             />
-          </div>
+          </button>
           <input
             type="file"
             id="profileInput"
@@ -136,7 +145,6 @@ const EditProfile = ({ userData, setUserData }) => {
           <p className="mt-2 text-gray-600">{email}</p>
         </div>
 
-        {/* RIGHT SIDE – Dummy Buttons */}
         <div className="flex flex-col justify-center md:w-1/2 space-y-4">
           <button className="flex items-center justify-start gap-3 px-5 py-3 rounded-lg bg-gray-100 hover:bg-indigo-100 transition text-gray-700 font-medium">
             <FaUserCog className="text-indigo-500 text-lg" />

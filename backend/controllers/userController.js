@@ -1,71 +1,78 @@
-// ======================= IMPORTS =======================
-import User from "../models/User.js";
-import Blog from "../models/Blog.js";
-import path from "path";
-import cloudinary from "../cloudinary.js"; // Ensure cloudinary.js exports a configured instance
+const User = require("../models/User");
+const Blog = require("../models/Blog");
+const cloudinary = require("../cloudinary");
 
-// ======================= HELPERS =======================
-const getProfileImageUrl = (filename, req) => {
-  if (!filename) return null;
-  if (filename.startsWith("http")) return filename;
-  return `${req.protocol}://${req.get("host")}/uploads/${filename}`;
+const getProfileImageUrl = (image, req) => {
+  if (!image) return "";
+  if (image.startsWith("http")) return image;
+  return `${req.protocol}://${req.get("host")}/uploads/${image}`;
 };
 
-// ======================= UPLOAD PROFILE IMAGE =======================
-export const uploadProfileImage = async (req, res) => {
+const formatUser = (user, req) => {
+  const rawUser = user.toObject ? user.toObject() : user;
+  const imageUrl = getProfileImageUrl(rawUser.avatar || rawUser.profileImage, req);
+
+  return {
+    ...rawUser,
+    avatar: imageUrl,
+    profileImage: imageUrl,
+  };
+};
+
+const uploadToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "profiles", resource_type: "image" },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+
+    stream.end(fileBuffer);
+  });
+};
+
+const uploadProfileImage = async (req, res) => {
   try {
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
     if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
 
-    let profileImageUrl = "";
-
-    // ✅ Try uploading to Cloudinary (for buffer uploads)
+    let imageUrl = "";
     if (req.file.buffer) {
-      const result = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder: "profiles", resource_type: "image" },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        );
-        stream.end(req.file.buffer);
-      });
-      profileImageUrl = result.secure_url;
-    } else if (req.file.path) {
-      // ✅ Fallback for local uploads
-      profileImageUrl = getProfileImageUrl(req.file.filename, req);
+      const result = await uploadToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url;
+    } else if (req.file.filename) {
+      imageUrl = getProfileImageUrl(req.file.filename, req);
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profileImage: profileImageUrl },
-      { new: true }
+      { avatar: imageUrl, profileImage: imageUrl },
+      { new: true, runValidators: true }
     ).select("-password");
+
+    if (!updatedUser) return res.status(404).json({ success: false, message: "User not found" });
 
     res.json({
       success: true,
       message: "Profile image updated successfully",
-      user: {
-        ...updatedUser.toObject(),
-        profileImage: getProfileImageUrl(updatedUser.profileImage, req),
-      },
+      user: formatUser(updatedUser, req),
     });
   } catch (err) {
-    console.error("❌ Error uploading profile image:", err);
+    console.error("Error uploading profile image:", err);
     res.status(500).json({ success: false, message: "Error uploading profile image" });
   }
 };
 
-// ======================= DASHBOARD SUMMARY =======================
-export const getDashboardSummary = async (req, res) => {
+const getDashboardSummary = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalBlogs = await Blog.countDocuments();
 
     const recentBlogs = await Blog.find()
-      .populate("userId", "name email profileImage")
+      .populate("userId", "name email avatar profileImage")
       .sort({ createdAt: -1 })
       .limit(5);
 
@@ -83,7 +90,7 @@ export const getDashboardSummary = async (req, res) => {
       recentComments: recentComments.reverse(),
     });
   } catch (err) {
-    console.error("❌ Error fetching dashboard summary:", err);
+    console.error("Error fetching dashboard summary:", err);
     res.status(500).json({
       success: false,
       message: "Error fetching dashboard summary",
@@ -92,8 +99,7 @@ export const getDashboardSummary = async (req, res) => {
   }
 };
 
-// ======================= DASHBOARD STATS =======================
-export const getDashboardStats = async (req, res) => {
+const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalBlogs = await Blog.countDocuments();
@@ -104,32 +110,27 @@ export const getDashboardStats = async (req, res) => {
       totalBlogs,
     });
   } catch (error) {
-    console.error("❌ Error fetching dashboard stats:", error);
+    console.error("Error fetching dashboard stats:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// ======================= GET USER PROFILE =======================
-export const getProfile = async (req, res) => {
+const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     res.status(200).json({
       success: true,
-      user: {
-        ...user.toObject(),
-        profileImage: getProfileImageUrl(user.profileImage, req),
-      },
+      user: formatUser(user, req),
     });
   } catch (err) {
-    console.error("❌ Error fetching profile:", err);
+    console.error("Error fetching profile:", err);
     res.status(500).json({ success: false, message: "Failed to load profile" });
   }
 };
 
-// ======================= UPDATE PROFILE INFO =======================
-export const updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
   try {
     const { name, description } = req.body;
 
@@ -144,23 +145,19 @@ export const updateProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user: {
-        ...updatedUser.toObject(),
-        profileImage: getProfileImageUrl(updatedUser.profileImage, req),
-      },
+      user: formatUser(updatedUser, req),
     });
   } catch (err) {
-    console.error("❌ Error updating profile:", err);
+    console.error("Error updating profile:", err);
     res.status(500).json({ success: false, message: "Error updating profile" });
   }
 };
 
-// ======================= GET USER BLOGS =======================
-export const getUserBlogs = async (req, res) => {
+const getUserBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({ author: req.user._id })
       .sort({ createdAt: -1 })
-      .populate("author", "name email profileImage");
+      .populate("author", "name email avatar profileImage");
 
     const formattedBlogs = blogs.map((blog) => ({
       _id: blog._id,
@@ -173,7 +170,16 @@ export const getUserBlogs = async (req, res) => {
 
     res.status(200).json({ success: true, blogs: formattedBlogs });
   } catch (err) {
-    console.error("❌ Error fetching user blogs:", err);
+    console.error("Error fetching user blogs:", err);
     res.status(500).json({ success: false, message: "Error fetching user blogs" });
   }
+};
+
+module.exports = {
+  uploadProfileImage,
+  getDashboardSummary,
+  getDashboardStats,
+  getProfile,
+  updateProfile,
+  getUserBlogs,
 };

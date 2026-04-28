@@ -16,6 +16,8 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
+    localStorage.removeItem("user");
+    localStorage.removeItem("profileImage");
     setIsLoggedIn(false);
     navigate("/"); // redirect to login or home
   };

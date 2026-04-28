@@ -1,6 +1,5 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
-const axios = require("axios"); // optional, just for demo if fetching actual URL
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -26,7 +25,14 @@ exports.registerUser = async (req, res) => {
     res.status(201).json({
       message: "User registered successfully",
       token: generateToken(user._id),
-      user: { name: user.name, avatar: user.avatar },
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        profileImage: user.avatar,
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -39,15 +45,27 @@ exports.loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (user && (await user.matchPassword(password))) {
       // If avatar is empty, assign a random one
-      if (!user.avatar) {
+      if (!user.avatar && !user.profileImage) {
         user.avatar = getRandomAvatar();
+        await user.save();
+      }
+
+      if (!user.avatar && user.profileImage) {
+        user.avatar = user.profileImage;
         await user.save();
       }
 
       res.json({
         message: "Login successful",
         token: generateToken(user._id),
-        user: { name: user.name, avatar: user.avatar },
+        user: {
+          _id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          avatar: user.avatar,
+          profileImage: user.avatar,
+        },
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });

@@ -25,7 +25,11 @@ const Login = () => {
 
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
-        localStorage.setItem("username", res.data.username);
+        localStorage.setItem("user", JSON.stringify(res.data.user || {}));
+        localStorage.setItem("username", res.data.user?.name || res.data.user?.username || "");
+        if (res.data.user?.avatar || res.data.user?.profileImage) {
+          localStorage.setItem("profileImage", res.data.user.avatar || res.data.user.profileImage);
+        }
 
         // ✅ Navigate instantly with state for success toast
         navigate("/home", { replace: true, state: { toast: "Login Successful!" } });
