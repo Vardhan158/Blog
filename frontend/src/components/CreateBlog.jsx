@@ -102,7 +102,7 @@ const CreateBlog = ({ userData, setActiveTab }) => {
       if (image) formData.append("featuredImage", image);
 
       await axios.post(
-        "http://localhost:5000/api/blogs/publish",
+        "https://blog-rsxx.onrender.com/api/blogs/publish",
         formData,
         axiosConfig
       );
