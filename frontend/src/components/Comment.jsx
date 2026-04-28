@@ -16,8 +16,8 @@ const Comment = ({ blogId }) => {
 
       try {
         const url = blogId
-          ? `http://localhost:5000/api/comments/${blogId}` 
-          : "http://localhost:5000/api/comments"; 
+          ? `https://blog-rsxx.onrender.com/api/comments/${blogId}` 
+          : "https://blog-rsxx.onrender.com/api/comments"; 
 
         const res = await axios.get(url, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
