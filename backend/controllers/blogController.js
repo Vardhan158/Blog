@@ -1,7 +1,8 @@
 const Blog = require("../models/Blog");
 const User = require("../models/User");
+const Comment = require("../models/Comment");
 const cloudinary = require("../cloudinary");
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 const {
   createNotification,
   createNotificationsForRecipients,
@@ -75,7 +76,9 @@ const publishBlog = async (req, res) => {
 // Get all blogs (public)
 const getBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find().sort({ createdAt: -1 }).populate("userId", "name email");
+    const blogs = await Blog.find()
+      .sort({ createdAt: -1 })
+      .populate("userId", "name email avatar profileImage"); // ✅ added profileImage
     res.json({ success: true, count: blogs.length, blogs });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching blogs", error: err.message });
@@ -87,7 +90,9 @@ const getUserBlogs = async (req, res) => {
   try {
     const userId = req.params.userId || req.user?._id;
     if (!userId) return res.status(400).json({ message: "User ID not provided" });
-    const blogs = await Blog.find({ userId }).sort({ createdAt: -1 }).populate("userId", "name email");
+    const blogs = await Blog.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate("userId", "name email avatar profileImage"); // ✅ added profileImage
     res.json({ success: true, count: blogs.length, blogs });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching user blogs", error: err.message });
@@ -134,7 +139,9 @@ const commentOnBlog = async (req, res) => {
     const { comment } = req.body;
     const userId = req.user?._id;
     const userName = req.user?.name || "Anonymous";
-    const avatar = req.user?.avatar || "https://randomuser.me/api/portraits/men/45.jpg";
+
+    // ✅ Read profileImage first, avatar as fallback
+    const avatar = req.user?.profileImage || req.user?.avatar || "";
 
     if (!userId) return res.status(401).json({ message: "Not authorized" });
     if (!comment || !comment.trim()) return res.status(400).json({ message: "Comment cannot be empty" });
@@ -166,14 +173,24 @@ const getSingleBlog = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id))
       return res.status(400).json({ message: "Invalid blog ID" });
 
-    const blog = await Blog.findById(id).populate("userId", "name email avatar");
+    // ✅ Added profileImage to populate
+    const blog = await Blog.findById(id).populate("userId", "name email avatar profileImage");
     if (!blog) return res.status(404).json({ message: "Blog not found" });
 
-    const relatedArticles = await Blog.find({ category: blog.category, _id: { $ne: blog._id } }).limit(3);
+    const relatedArticles = await Blog.find({
+      category: blog.category,
+      _id: { $ne: blog._id },
+    }).limit(3);
 
-    res.json({ article: blog, relatedArticles, comments: blog.comments || [] });
+    // ✅ Fetch comments from Comment collection with full user data
+    const comments = await Comment.find({ blog: id })
+      .populate("user", "name avatar profileImage")
+      .sort({ createdAt: -1 });
+
+    res.json({ article: blog, relatedArticles, comments: comments || [] });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching article", error: err.message });
   }
 };
+
 module.exports = { publishBlog, getBlogs, getUserBlogs, likeBlog, commentOnBlog, getSingleBlog };

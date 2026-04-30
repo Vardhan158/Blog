@@ -6,18 +6,23 @@ const { createNotification } = require("./notificationController");
 const addComment = async (req, res) => {
   try {
     const { blogId, text } = req.body;
-    if (!blogId || !text) return res.status(400).json({ message: "All fields required" });
+    if (!blogId || !text)
+      return res.status(400).json({ message: "All fields required" });
 
     const blog = await Blog.findById(blogId);
     if (!blog) return res.status(404).json({ message: "Blog not found" });
+
+    // ✅ Get user's current profile image (Cloudinary URL or local path)
+    const userProfileImage = req.user?.profileImage || req.user?.avatar || "";
 
     const comment = await Comment.create({
       user: req.user._id,
       blog: blogId,
       text,
+      userProfileImage, // ✅ Store the profile image at time of comment
     });
 
-    // ✅ Add comment reference to the blog
+    // Add comment reference to the blog
     blog.comments = blog.comments || [];
     blog.comments.push({
       userId: req.user._id,
@@ -27,9 +32,13 @@ const addComment = async (req, res) => {
     });
     await blog.save();
 
-    // Populate user info for frontend convenience
-    await comment.populate("user", "name avatar");
+    // ✅ Populate both avatar + profileImage so frontend always gets the image
+    await comment.populate("user", "name avatar profileImage");
+    await comment.populate("blog", "title");
 
+    // ✅ Ensure userProfileImage is included in response
+    const commentData = comment.toObject ? comment.toObject() : comment;
+    
     await createNotification({
       recipient: blog.userId,
       actor: req.user._id,
@@ -38,30 +47,30 @@ const addComment = async (req, res) => {
       message: `${req.user.name || "Someone"} commented on your blog "${blog.title}".`,
     });
 
-    res.status(201).json(comment);
+    res.status(201).json(commentData);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error adding comment", error: err.message });
   }
 };
 
-
 // Get comments for a specific blog or all comments
 const getComments = async (req, res) => {
   try {
     const { blogId } = req.params;
-    if (!blogId) return res.status(400).json({ message: "Blog ID required" });
+    if (!blogId)
+      return res.status(400).json({ message: "Blog ID required" });
 
     const comments = await Comment.find({ blog: blogId })
-      .populate("user", "name avatar") // get user info
+      .populate("user", "name avatar profileImage") // ✅ Get current user data
+      .populate("blog", "title")
       .sort({ createdAt: -1 });
-    console.log("Fetched comments:", comments);
+
     res.json(comments);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error fetching comments", error: err.message });
   }
 };
-
 
 module.exports = { addComment, getComments };

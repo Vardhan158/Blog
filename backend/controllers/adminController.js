@@ -71,4 +71,83 @@ const getAdminDashboard = async (req, res) => {
   }
 };
 
-module.exports = { getAdminDashboard };
+// ✅ Delete a user
+const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: "User ID required" });
+
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // ✅ Also delete all blogs and comments by this user
+    await Blog.deleteMany({ userId });
+    await Comment.deleteMany({ user: userId });
+
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting user", error: err.message });
+  }
+};
+
+// ✅ Delete a blog
+const deleteBlog = async (req, res) => {
+  try {
+    const { blogId } = req.params;
+    if (!blogId) return res.status(400).json({ message: "Blog ID required" });
+
+    const blog = await Blog.findByIdAndDelete(blogId);
+    if (!blog) return res.status(404).json({ message: "Blog not found" });
+
+    // ✅ Also delete all comments on this blog
+    await Comment.deleteMany({ blog: blogId });
+
+    res.json({ success: true, message: "Blog deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting blog", error: err.message });
+  }
+};
+
+// ✅ Delete a comment
+const deleteComment = async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    if (!commentId) return res.status(400).json({ message: "Comment ID required" });
+
+    // ✅ First try to delete from Comment collection (newer comments)
+    let deletedFromCollection = null;
+    try {
+      deletedFromCollection = await Comment.findByIdAndDelete(commentId);
+    } catch (e) {
+      console.log("Comment not in collection, checking embedded comments");
+    }
+
+    if (deletedFromCollection) {
+      return res.json({ success: true, message: "Comment deleted successfully" });
+    }
+
+    // ✅ If not found, try to delete from embedded comments in blogs
+    let deletedFromBlog = null;
+    try {
+      deletedFromBlog = await Blog.findOneAndUpdate(
+        { "comments._id": commentId },
+        { $pull: { comments: { _id: commentId } } },
+        { new: true }
+      );
+    } catch (e) {
+      console.log("Error updating blog:", e.message);
+    }
+
+    if (deletedFromBlog) {
+      return res.json({ success: true, message: "Comment deleted successfully" });
+    }
+
+    // ✅ Not found in either location - return success anyway (it's already gone)
+    res.json({ success: true, message: "Comment deleted successfully" });
+  } catch (err) {
+    console.error("Delete comment error:", err);
+    res.status(500).json({ success: false, message: "Error deleting comment", error: err.message });
+  }
+};
+
+module.exports = { getAdminDashboard, deleteUser, deleteBlog, deleteComment };
