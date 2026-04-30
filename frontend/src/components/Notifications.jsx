@@ -17,7 +17,6 @@ const Notifications = ({ onUnreadCountChange }) => {
 
   const fetchNotifications = async () => {
     if (!token) return;
-
     try {
       setLoading(true);
       const res = await axios.get(`${API_URL}/api/notifications`, axiosConfig);
@@ -37,19 +36,15 @@ const Notifications = ({ onUnreadCountChange }) => {
   useEffect(() => {
     const user = getUser() || {};
     if (!user?._id) return;
-
     const socket = connectSocketForUser(user._id);
     if (!socket) return;
-
     const handleNewNotification = (notification) => {
       setNotifications((prev) => [notification, ...prev]);
       onUnreadCountChange?.((prev) =>
         typeof prev === "number" ? prev + 1 : prev
       );
     };
-
     socket.on("notification:new", handleNewNotification);
-
     return () => {
       socket.off("notification:new", handleNewNotification);
     };
@@ -67,67 +62,304 @@ const Notifications = ({ onUnreadCountChange }) => {
 
   const formatDate = (value) => (value ? new Date(value).toLocaleString() : "");
 
-  if (loading) return <p className="text-center mt-4">Loading notifications...</p>;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Notifications</h2>
-          <p className="text-sm text-gray-500">Activity from people who interact with your blogs.</p>
-        </div>
-        <button
-          onClick={markAllRead}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition"
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+        .notif-root * { font-family: 'Poppins', sans-serif; box-sizing: border-box; }
+
+        .notif-card {
+          background: #fff;
+          border: 1.5px solid #e8eaf6;
+          border-radius: 16px;
+          padding: 16px 18px;
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .notif-card:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.08); }
+        .notif-card.unread {
+          background: #f5f3ff;
+          border-color: #c7d2fe;
+        }
+
+        .notif-icon-wrap {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .notif-icon-wrap.unread { background: #ede9fe; }
+        .notif-icon-wrap.read { background: #f1f5f9; }
+
+        .mark-all-btn {
+          font-family: 'Poppins', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          padding: 9px 18px;
+          border-radius: 10px;
+          border: none;
+          cursor: pointer;
+          background: linear-gradient(135deg, #6366f1, #818cf8);
+          color: #fff;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          transition: opacity 0.2s, transform 0.15s;
+          white-space: nowrap;
+        }
+        .mark-all-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .mark-all-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .skeleton {
+          background: linear-gradient(90deg, #f1f5f9 25%, #e8edf3 50%, #f1f5f9 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.4s infinite;
+          border-radius: 8px;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        @media (max-width: 480px) {
+          .notif-header-row { flex-direction: column; align-items: flex-start !important; }
+          .mark-all-btn { width: 100%; justify-content: center; }
+        }
+      `}</style>
+
+      <div
+        className="notif-root"
+        style={{
+          width: "100%",
+          maxWidth: 720,
+          margin: "0 auto",
+          padding: "0 4px",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="notif-header-row"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            marginBottom: 24,
+            flexWrap: "wrap",
+          }}
         >
-          <FaCheck />
-          Mark all read
-        </button>
-      </div>
-
-      {errorMsg && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {errorMsg}
-        </div>
-      )}
-
-      {notifications.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center text-gray-500">
-          No notifications yet.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {notifications.map((notification) => (
-            <div
-              key={notification._id}
-              className={`rounded-lg border p-4 shadow-sm ${
-                notification.read
-                  ? "border-gray-200 bg-white"
-                  : "border-indigo-200 bg-indigo-50"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className="mt-1 text-indigo-600">
-                  <FaBell />
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, color: "#1e1b4b", margin: 0 }}>
+                Notifications
+              </h2>
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                    color: "#fff",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    borderRadius: 20,
+                    padding: "2px 9px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {unreadCount} new
                 </span>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{notification.message}</p>
-                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-gray-500">
-                    <span>{formatDate(notification.createdAt)}</span>
-                    {notification.blog?.title && <span>Blog: {notification.blog.title}</span>}
+              )}
+            </div>
+            <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>
+              Activity from people interacting with your blogs
+            </p>
+          </div>
+
+          {notifications.some((n) => !n.read) && (
+            <button className="mark-all-btn" onClick={markAllRead}>
+              <FaCheck size={11} />
+              Mark all read
+            </button>
+          )}
+        </div>
+
+        {/* Error */}
+        {errorMsg && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "12px 16px",
+              borderRadius: 12,
+              background: "#fff5f5",
+              border: "1px solid #fecaca",
+              fontSize: 13,
+              color: "#dc2626",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+              <path d="M9 0a9 9 0 1 1 0 18A9 9 0 0 1 9 0Zm0 13.5a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Zm0-3.6a.9.9 0 0 0 .9-.9V5.4a.9.9 0 1 0-1.8 0v3.6a.9.9 0 0 0 .9.9Z" fill="#EF4444" />
+            </svg>
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Loading skeletons */}
+        {loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                style={{
+                  background: "#fff",
+                  border: "1.5px solid #e8eaf6",
+                  borderRadius: 16,
+                  padding: "16px 18px",
+                  display: "flex",
+                  gap: 14,
+                  alignItems: "flex-start",
+                }}
+              >
+                <div className="skeleton" style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton" style={{ height: 14, width: "70%", marginBottom: 8 }} />
+                  <div className="skeleton" style={{ height: 12, width: "40%" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && notifications.length === 0 && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "52px 24px",
+              borderRadius: 16,
+              border: "1.5px dashed #c7d2fe",
+              background: "#fafbff",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 16,
+                background: "#ede9fe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 16px",
+              }}
+            >
+              <FaBell size={22} color="#6366f1" />
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 500, color: "#475569", margin: "0 0 4px" }}>
+              All caught up!
+            </p>
+            <p style={{ fontSize: 13, color: "#94a3b8", margin: 0 }}>
+              No notifications yet. Check back later.
+            </p>
+          </div>
+        )}
+
+        {/* Notification list */}
+        {!loading && notifications.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {notifications.map((notification) => (
+              <div
+                key={notification._id}
+                className={`notif-card ${notification.read ? "read" : "unread"}`}
+              >
+                {/* Icon */}
+                <div className={`notif-icon-wrap ${notification.read ? "read" : "unread"}`}>
+                  <FaBell
+                    size={15}
+                    color={notification.read ? "#94a3b8" : "#6366f1"}
+                  />
+                </div>
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      fontWeight: notification.read ? 400 : 500,
+                      color: notification.read ? "#475569" : "#1e1b4b",
+                      margin: "0 0 6px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {notification.message}
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "#94a3b8",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                      </svg>
+                      {formatDate(notification.createdAt)}
+                    </span>
+                    {notification.blog?.title && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "#6366f1",
+                          background: "#ede9fe",
+                          borderRadius: 6,
+                          padding: "2px 8px",
+                          fontWeight: 500,
+                          maxWidth: "100%",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {notification.blog.title}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {/* Unread badge */}
                 {!notification.read && (
-                  <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                      color: "#fff",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      borderRadius: 20,
+                      padding: "3px 9px",
+                      alignSelf: "flex-start",
+                      lineHeight: 1.6,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     New
                   </span>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

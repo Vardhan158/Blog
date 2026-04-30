@@ -2,8 +2,24 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { FaHeart, FaBookOpen, FaSearch } from "react-icons/fa";
+import { FaHeart, FaSearch } from "react-icons/fa";
 import { getToken, getUser } from "../utils/authStorage";
+
+const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
+
+const SkeletonCard = () => (
+  <div style={styles.card}>
+    <div style={{ ...styles.cardImg, background: "#e5e7eb" }} />
+    <div style={{ padding: "1.1rem 1.25rem" }}>
+      {[75, 90, 55, 40].map((w, i) => (
+        <div key={i} style={{ height: 10, background: "#e5e7eb", borderRadius: 4, marginBottom: 8, width: `${w}%` }} />
+      ))}
+    </div>
+  </div>
+);
+
+const initials = (name = "") =>
+  name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 
 export default function Article() {
   const [blogs, setBlogs] = useState([]);
@@ -11,194 +27,181 @@ export default function Article() {
   const [search, setSearch] = useState("");
   const [userId, setUserId] = useState(null);
   const [loadingLike, setLoadingLike] = useState(false);
-  const [loading, setLoading] = useState(true); // ✅ Added loading state
-
-  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const user = getUser();
-    if (user && user._id) setUserId(user._id);
+    if (user?._id) setUserId(user._id);
   }, []);
 
-  // ✅ Fetch blogs
   const fetchBlogs = async () => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_URL}/api/blogs`);
-      const blogsData = Array.isArray(res.data.blogs)
-        ? res.data.blogs
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
-      setBlogs(blogsData);
-      setFiltered(blogsData);
+      const data = Array.isArray(res.data.blogs) ? res.data.blogs : Array.isArray(res.data) ? res.data : [];
+      setBlogs(data);
+      setFiltered(data);
     } catch (err) {
-      console.error("Error fetching blogs:", err);
-      setBlogs([]);
-      setFiltered([]);
+      console.error(err);
+      setBlogs([]); setFiltered([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchBlogs();
-  }, [API_URL]);
+  useEffect(() => { fetchBlogs(); }, []);
 
-  // ✅ Search filter
   useEffect(() => {
-    const results = blogs.filter((blog) =>
-      blog.title.toLowerCase().includes(search.toLowerCase())
-    );
-    setFiltered(results);
+    setFiltered(blogs.filter((b) => b.title.toLowerCase().includes(search.toLowerCase())));
   }, [search, blogs]);
 
-  // ✅ Like handler
   const handleLike = async (blogId) => {
+    const token = getToken();
+    if (!token) return alert("Please log in to like blogs.");
+    if (loadingLike) return;
+    setLoadingLike(true);
     try {
-      const token = getToken();
-      if (!token) {
-        alert("Please log in to like blogs.");
-        return;
-      }
-
-      if (loadingLike) return;
-      setLoadingLike(true);
-
-      await axios.put(
-        `${API_URL}/api/blogs/like/${blogId}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      await axios.put(`${API_URL}/api/blogs/like/${blogId}`, {}, { headers: { Authorization: `Bearer ${token}` } });
       await fetchBlogs();
     } catch (err) {
-      console.error("Error liking blog:", err);
+      console.error(err);
     } finally {
       setLoadingLike(false);
     }
   };
 
-  const isLikedByUser = (blog) => {
-    if (!userId || !blog.likes) return false;
-    return blog.likes.some((id) => id.toString() === userId.toString());
-  };
-
-  // ✅ Skeleton loader component
-  const SkeletonCard = () => (
-    <div className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse">
-      <div className="w-full h-52 bg-gray-200"></div>
-      <div className="p-5">
-        <div className="h-5 bg-gray-200 rounded w-3/4 mb-3"></div>
-        <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
-        <div className="h-3 bg-gray-200 rounded w-5/6 mb-2"></div>
-        <div className="h-3 bg-gray-200 rounded w-4/6 mb-2"></div>
-        <div className="flex justify-between mt-4">
-          <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-        </div>
-      </div>
-    </div>
-  );
+  const isLiked = (blog) =>
+    userId && blog.likes?.some((id) => id.toString() === userId.toString());
 
   return (
     <>
       <Navbar />
-      <section className="min-h-screen bg-gray-50 text-gray-800 px-6 md:px-16 lg:px-32 py-20">
-        <div className="flex items-center justify-center mb-10">
-          <FaBookOpen className="text-blue-600 text-4xl mr-3" />
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">
-            Latest Blog Articles
-          </h1>
+      <section style={styles.section}>
+        {/* Hero */}
+        <div style={styles.hero}>
+          <span style={styles.tag}>Blog</span>
+          <h1 style={styles.h1}>Latest articles</h1>
+          <p style={styles.sub}>Discover stories, tips, and guides from our community</p>
         </div>
 
-        <div className="max-w-lg mx-auto mb-12 relative">
-          <FaSearch className="absolute left-4 top-3.5 text-gray-500 text-lg" />
+        {/* Search */}
+        <div style={styles.searchWrap}>
+          <FaSearch style={styles.searchIcon} />
           <input
+            style={styles.searchInput}
             type="text"
             placeholder="Search articles..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-gray-300 rounded-full pl-11 pr-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm"
           />
         </div>
 
-        {/* ✅ Loading State */}
+        {/* Grid */}
         {loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...Array(6)].map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
+          <div style={styles.grid}>
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-600">No articles found.</p>
+          <p style={{ textAlign: "center", color: "#9ca3af", fontFamily: "'Poppins', sans-serif" }}>No articles found.</p>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div style={styles.grid}>
             {filtered.map((blog) => (
-              <div
-                key={blog._id}
-                className="block bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:scale-105"
-              >
-                {blog.featuredImage && (
-                  <img
-                    src={blog.featuredImage}
-                    alt={blog.title}
-                    className="w-full h-52 object-cover"
-                  />
+              <div key={blog._id} style={styles.card} className="blog-card">
+                {blog.featuredImage ? (
+                  <img src={blog.featuredImage} alt={blog.title} style={styles.cardImg} />
+                ) : (
+                  <div style={{ ...styles.cardImg, background: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" strokeWidth="1.5">
+                      <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+                    </svg>
+                  </div>
                 )}
 
-                <div className="p-5">
-                  <div className="flex justify-between items-center mb-3">
-                    <Link to={`/article/${blog._id}`}>
-                      <h2 className="text-xl font-semibold hover:underline text-gray-900">
-                        {blog.title}
-                      </h2>
+                <div style={{ padding: "1.1rem 1.25rem 1rem" }}>
+                  <div style={styles.cardTop}>
+                    <Link to={`/article/${blog._id}`} style={styles.cardTitle}>
+                      {blog.title}
                     </Link>
-
-                    <button
-                      onClick={() => handleLike(blog._id)}
-                      disabled={loadingLike}
-                      className="flex items-center gap-1 focus:outline-none"
-                    >
-                      <FaHeart
-                        className={`text-2xl transition-transform ${
-                          isLikedByUser(blog)
-                            ? "text-pink-500 scale-110"
-                            : "text-gray-400 hover:text-pink-400"
-                        }`}
-                      />
-                      <span className="text-sm text-gray-700 ml-1">
-                        {blog.likes?.length || 0}
-                      </span>
+                    <button onClick={() => handleLike(blog._id)} disabled={loadingLike} style={styles.likeBtn}>
+                      <FaHeart style={{ fontSize: 15, color: isLiked(blog) ? "#f472b6" : "#d1d5db", transition: "color .15s" }} />
+                      <span style={styles.likeCount}>{blog.likes?.length || 0}</span>
                     </button>
                   </div>
 
                   <p
-                    className="text-gray-600 text-sm mb-4 line-clamp-3"
-                    dangerouslySetInnerHTML={{
-                      __html: blog.content || "No content available.",
-                    }}
+                    style={styles.excerpt}
+                    dangerouslySetInnerHTML={{ __html: blog.content || "No content available." }}
                   />
 
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>By {blog.userId?.name || "Anonymous"}</span>
+                  <div style={styles.meta}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={styles.avatar}>{initials(blog.userId?.name || "AN")}</div>
+                      <span>{blog.userId?.name || "Anonymous"}</span>
+                    </div>
                     <span>{new Date(blog.createdAt).toLocaleDateString()}</span>
                   </div>
 
-                  <div className="mt-4 text-right">
-                    <Link
-                      to={`/article/${blog._id}`}
-                      className="text-blue-600 hover:underline text-sm"
-                    >
-                      Read more →
-                    </Link>
-                  </div>
+                  <Link to={`/article/${blog._id}`} style={styles.readMore}>
+                    Read more →
+                  </Link>
                 </div>
               </div>
             ))}
           </div>
         )}
       </section>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+        .blog-card { transition: transform .2s ease, box-shadow .2s ease; }
+        .blog-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.07); }
+      `}</style>
     </>
   );
 }
+
+const styles = {
+  section: {
+    minHeight: "100vh", background: "#f9fafb",
+    fontFamily: "'Poppins', sans-serif",
+    padding: "2.5rem 1.5rem", color: "#111827",
+  },
+  hero: { textAlign: "center", marginBottom: "2rem" },
+  tag: {
+    display: "inline-block", background: "#eef4ff", color: "#2563eb",
+    fontSize: 11, fontWeight: 500, letterSpacing: ".1em",
+    textTransform: "uppercase", padding: "4px 14px", borderRadius: 20, marginBottom: ".75rem",
+  },
+  h1: { fontSize: "1.75rem", fontWeight: 600, color: "#111827", lineHeight: 1.25 },
+  sub: { fontSize: ".85rem", color: "#6b7280", fontWeight: 300, marginTop: ".4rem" },
+  searchWrap: { maxWidth: 480, margin: "0 auto 2.5rem", position: "relative" },
+  searchIcon: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 14 },
+  searchInput: {
+    width: "100%", border: "1px solid #e5e7eb", borderRadius: 40,
+    padding: "10px 16px 10px 42px", fontFamily: "'Poppins', sans-serif",
+    fontSize: ".85rem", color: "#111827", background: "#fff", outline: "none",
+  },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem", maxWidth: 1100, margin: "0 auto" },
+  card: { background: "#fff", borderRadius: 16, border: "1px solid #f0f0f0", overflow: "hidden" },
+  cardImg: { width: "100%", height: 160, objectFit: "cover", display: "block" },
+  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: ".5rem" },
+  cardTitle: { fontSize: ".95rem", fontWeight: 600, color: "#111827", lineHeight: 1.35, flex: 1, textDecoration: "none" },
+  likeBtn: { display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0 },
+  likeCount: { fontSize: ".75rem", color: "#6b7280" },
+  excerpt: {
+    fontSize: ".775rem", color: "#6b7280", lineHeight: 1.65, fontWeight: 300,
+    marginBottom: ".85rem", display: "-webkit-box", WebkitLineClamp: 3,
+    WebkitBoxOrient: "vertical", overflow: "hidden",
+  },
+  meta: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    fontSize: ".72rem", color: "#9ca3af",
+    borderTop: "1px solid #f5f5f5", paddingTop: ".75rem",
+  },
+  avatar: {
+    width: 22, height: 22, borderRadius: "50%", background: "#dbeafe",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 10, fontWeight: 600, color: "#1d4ed8",
+  },
+  readMore: { fontSize: ".75rem", color: "#2563eb", fontWeight: 500, textDecoration: "none", display: "inline-block", marginTop: ".6rem" },
+};

@@ -8,36 +8,365 @@ import { getToken } from "../utils/authStorage";
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
 
 const getProfilePic = (user, cachedImage = null) => {
-  // ✅ Use cached image from userProfileImage field first (from comment timestamp)
   if (cachedImage && typeof cachedImage === "string" && cachedImage.trim()) {
-    console.log("🖼️ Using cached image:", cachedImage);
     if (cachedImage.startsWith("http")) return cachedImage;
     return `https://blog-rsxx.onrender.com/uploads/${cachedImage.replace(/\\/g, "/")}`;
   }
-
-  if (!user) {
-    console.log("⚠️ No user object");
-    return DEFAULT_AVATAR;
-  }
-  
-  // ✅ Prioritize profileImage (which is always Cloudinary URL if available)
+  if (!user) return DEFAULT_AVATAR;
   const image = user?.profileImage || user?.avatar || "";
-  if (!image || (typeof image === "string" && image.trim() === "")) {
-    console.log("⚠️ No image in user object, using default");
-    return DEFAULT_AVATAR;
-  }
-  
-  // ✅ If it's already a full URL (Cloudinary or otherwise), use it directly
-  if (typeof image === "string" && image.startsWith("http")) {
-    console.log("🖼️ Using Cloudinary/full URL:", image);
-    return image;
-  }
-  
-  // ✅ Otherwise, construct the local URL
-  const constructedUrl = `https://blog-rsxx.onrender.com/uploads/${String(image).replace(/\\/g, "/")}`;
-  console.log("🖼️ Using constructed URL:", constructedUrl);
-  return constructedUrl;
+  if (!image || (typeof image === "string" && image.trim() === "")) return DEFAULT_AVATAR;
+  if (typeof image === "string" && image.startsWith("http")) return image;
+  return `https://blog-rsxx.onrender.com/uploads/${String(image).replace(/\\/g, "/")}`;
 };
+
+/* ─── Shimmer keyframe injected once ─── */
+const SHIMMER_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=DM+Sans:wght@400;500;600&display=swap');
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .ba-root {
+    --ink:       #1a1714;
+    --ink-2:     #4a4540;
+    --ink-3:     #8a847c;
+    --ink-4:     #b8b2a9;
+    --paper:     #faf8f4;
+    --paper-2:   #f2ede6;
+    --paper-3:   #e8e2d8;
+    --accent:    #c0392b;
+    --accent-2:  #e8604a;
+    --rule:      #e0dbd2;
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── Hero ── */
+  .ba-hero {
+    position: relative;
+    width: 100%;
+    height: clamp(280px, 55vw, 580px);
+    overflow: hidden;
+  }
+  .ba-hero img {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+    transform: scale(1.02);
+    transition: transform 6s ease;
+  }
+  .ba-hero:hover img { transform: scale(1.05); }
+  .ba-hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      160deg,
+      rgba(10,8,6,0.05) 0%,
+      rgba(10,8,6,0.35) 50%,
+      rgba(10,8,6,0.82) 100%
+    );
+  }
+  .ba-hero-content {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    padding: clamp(24px, 5vw, 56px) clamp(20px, 6vw, 72px) clamp(28px, 5vw, 52px);
+    animation: fadeUp 0.7s ease both;
+  }
+  .ba-category {
+    display: inline-flex; align-self: flex-start;
+    align-items: center; gap: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(10px, 1.6vw, 11px);
+    font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 14px; border-radius: 2px;
+    margin-bottom: 14px;
+  }
+  .ba-hero-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    color: #fff; margin: 0;
+    font-size: clamp(22px, 5vw, 52px);
+    font-weight: 700; line-height: 1.15;
+    max-width: 840px;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.25);
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+  .ba-hero-subtitle {
+    color: rgba(255,255,255,0.78);
+    margin: 12px 0 0;
+    font-size: clamp(14px, 2.2vw, 19px);
+    max-width: 620px; line-height: 1.55;
+    font-style: italic; font-weight: 300;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  /* ── Body wrapper ── */
+  .ba-body {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 40px);
+    animation: fadeIn 0.5s 0.3s ease both;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  /* ── Author bar ── */
+  .ba-authorbar {
+    display: flex; align-items: center;
+    flex-wrap: wrap; gap: 14px;
+    padding: clamp(18px, 4vw, 30px) 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ba-avatar {
+    width: clamp(40px, 7vw, 52px);
+    height: clamp(40px, 7vw, 52px);
+    border-radius: 50%; object-fit: cover;
+    border: 2px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .ba-author-name {
+    margin: 0;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600; color: var(--ink);
+    font-size: clamp(13px, 2.2vw, 15px);
+  }
+  .ba-author-meta {
+    margin: 2px 0 0; color: var(--ink-3);
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(11px, 1.8vw, 13px);
+  }
+  .ba-share-btn {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 7px;
+    border: 1.5px solid var(--paper-3);
+    border-radius: 2px;
+    padding: 7px 16px;
+    background: transparent;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(11px, 1.8vw, 13px);
+    font-weight: 500;
+    color: var(--ink-2);
+    flex-shrink: 0;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
+    white-space: nowrap;
+  }
+  .ba-share-btn:hover {
+    background: var(--paper-2);
+    border-color: var(--ink-3);
+    color: var(--ink);
+  }
+
+  /* ── Article body ── */
+  .ba-article {
+    padding: clamp(28px, 5vw, 52px) 0 0;
+  }
+  .ba-article p  { font-size: clamp(16px, 2.2vw, 19px); line-height: 1.9; color: #2a2520; margin-bottom: 1.6em; font-weight: 300; }
+  .ba-article h2 { font-family: 'Playfair Display', serif; font-size: clamp(22px, 4vw, 32px); color: var(--ink); margin: 2.2em 0 .6em; font-weight: 700; line-height: 1.2; }
+  .ba-article h3 { font-family: 'Playfair Display', serif; font-size: clamp(18px, 3vw, 24px); color: var(--ink); margin: 1.8em 0 .5em; font-weight: 600; font-style: italic; }
+  .ba-article img { max-width: 100%; border-radius: 4px; margin: 2.2em 0; display: block; height: auto; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+  .ba-article blockquote {
+    border-left: 3px solid var(--accent);
+    margin: 2.2em 0; padding: .8em 0 .8em 1.6em;
+    font-style: italic; color: var(--ink-2);
+    font-size: clamp(17px, 2.5vw, 21px);
+    font-family: 'Playfair Display', serif;
+    background: none;
+  }
+  .ba-article ul, .ba-article ol { font-size: clamp(16px, 2.2vw, 19px); line-height: 1.85; color: #2a2520; padding-left: 1.6em; margin-bottom: 1.6em; font-weight: 300; }
+  .ba-article li { margin-bottom: .5em; }
+  .ba-article a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .ba-article code { background: var(--paper-2); border-radius: 3px; padding: 2px 7px; font-size: .85em; font-family: 'Fira Code', 'Courier New', monospace; word-break: break-word; color: var(--accent); }
+  .ba-article pre { background: #18160f; color: #e8e0d0; padding: 1.4em 1.6em; border-radius: 4px; overflow-x: auto; margin: 1.8em 0; font-size: clamp(12px, 1.8vw, 14px); }
+  .ba-article hr { border: none; border-top: 1px solid var(--rule); margin: 2.8em 0; }
+  .ba-article table { width: 100%; border-collapse: collapse; margin: 1.8em 0; font-size: clamp(13px, 2vw, 16px); }
+  .ba-article th, .ba-article td { border: 1px solid var(--rule); padding: .8em 1em; text-align: left; }
+  .ba-article th { background: var(--paper-2); font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: .92em; letter-spacing: .04em; }
+
+  /* ── Divider ── */
+  .ba-divider {
+    border: none;
+    display: flex; align-items: center; gap: 12px;
+    margin: clamp(36px, 6vw, 60px) 0 0;
+  }
+  .ba-divider::before, .ba-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--rule);
+  }
+  .ba-divider-icon { color: var(--ink-4); font-size: 18px; flex-shrink: 0; }
+
+  /* ── Related Articles ── */
+  .ba-related { padding: clamp(28px, 5vw, 52px) 0; }
+  .ba-section-heading {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(11px, 1.8vw, 12px);
+    font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 clamp(18px, 3vw, 30px);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .ba-section-heading::after {
+    content: ''; flex: 1; height: 1px; background: var(--rule);
+  }
+  .ba-related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+    gap: clamp(14px, 2.5vw, 22px);
+  }
+  .ba-related-card {
+    display: block; background: white;
+    border: 1px solid var(--rule);
+    text-decoration: none;
+    transition: transform 0.22s cubic-bezier(.16,1,.3,1), box-shadow 0.22s;
+    overflow: hidden;
+  }
+  .ba-related-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(26,23,20,0.10);
+  }
+  .ba-related-card img {
+    width: 100%; height: clamp(110px, 22vw, 140px);
+    object-fit: cover; display: block;
+    transition: transform 0.4s ease;
+  }
+  .ba-related-card:hover img { transform: scale(1.04); }
+  .ba-related-card-body { padding: clamp(10px, 2vw, 16px); }
+  .ba-related-card h4 {
+    margin: 0;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(13px, 1.8vw, 15px);
+    font-weight: 600; color: var(--ink); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* ── Comments ── */
+  .ba-comments { padding: clamp(28px, 5vw, 52px) 0 clamp(48px, 9vw, 96px); }
+  .ba-comment-count {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(11px, 1.8vw, 12px);
+    font-weight: 700; letter-spacing: .1em;
+    background: var(--accent); color: #fff;
+    padding: 2px 9px; border-radius: 2px;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  .ba-comment-input-row {
+    display: flex; gap: clamp(8px, 2vw, 12px);
+    align-items: stretch;
+    margin-bottom: clamp(24px, 4vw, 36px);
+    flex-wrap: wrap;
+  }
+  .ba-comment-input {
+    flex: 1 1 200px; min-width: 0;
+    padding: clamp(11px, 2vw, 14px) clamp(14px, 2.5vw, 18px);
+    border: 1.5px solid var(--paper-3);
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(13px, 2.2vw, 15px);
+    color: var(--ink); outline: none;
+    background: white;
+    border-radius: 2px;
+    transition: border-color 0.18s;
+    min-height: 46px;
+  }
+  .ba-comment-input:disabled { background: var(--paper-2); color: var(--ink-3); }
+  .ba-comment-input:focus { border-color: var(--accent); }
+  .ba-comment-btn {
+    padding: clamp(11px, 2vw, 14px) clamp(20px, 3.5vw, 28px);
+    background: var(--ink);
+    color: #faf8f4; border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(13px, 2.2vw, 15px); font-weight: 600;
+    cursor: pointer; flex-shrink: 0;
+    border-radius: 2px;
+    min-height: 46px;
+    letter-spacing: .04em;
+    transition: background 0.18s, transform 0.12s;
+    display: flex; align-items: center; justify-content: center;
+    white-space: nowrap;
+  }
+  .ba-comment-btn:hover:not(:disabled) { background: var(--accent); }
+  .ba-comment-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .ba-comment-btn:active:not(:disabled) { transform: scale(0.98); }
+
+  .ba-comment-list { display: flex; flex-direction: column; gap: clamp(14px, 3vw, 20px); }
+  .ba-comment-item {
+    display: flex; gap: clamp(12px, 2.5vw, 18px);
+    padding: clamp(14px, 3vw, 20px);
+    background: white;
+    border: 1px solid var(--rule);
+    align-items: flex-start;
+  }
+  .ba-comment-avatar {
+    width: clamp(32px, 5.5vw, 42px);
+    height: clamp(32px, 5.5vw, 42px);
+    border-radius: 50%; object-fit: cover;
+    border: 1.5px solid var(--rule); flex-shrink: 0;
+  }
+  .ba-comment-user {
+    margin: 0; font-family: 'DM Sans', sans-serif;
+    font-weight: 600; color: var(--ink);
+    font-size: clamp(13px, 2vw, 14px);
+  }
+  .ba-comment-date {
+    color: var(--ink-4);
+    font-size: clamp(10px, 1.6vw, 12px);
+    font-family: 'DM Sans', sans-serif;
+    flex-shrink: 0; white-space: nowrap;
+    margin-left: auto;
+  }
+  .ba-comment-text {
+    margin: 5px 0 0; color: var(--ink-2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(13px, 2.2vw, 15px);
+    line-height: 1.65; word-break: break-word;
+  }
+  .ba-empty-comments {
+    text-align: center;
+    padding: clamp(32px, 6vw, 52px) 20px;
+    background: white;
+    border: 1px solid var(--rule);
+  }
+  .ba-empty-icon { font-size: clamp(28px, 5vw, 38px); margin-bottom: 10px; }
+  .ba-empty-text {
+    color: var(--ink-3);
+    font-family: 'DM Sans', sans-serif;
+    margin: 0; font-size: clamp(13px, 2.2vw, 15px);
+  }
+
+  /* ── Skeleton ── */
+  .ba-skel { background: var(--paper-2); border-radius: 3px; position: relative; overflow: hidden; }
+  .ba-skel::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
+    animation: shimmer 1.6s infinite;
+  }
+  .ba-error-wrap {
+    min-height: 100vh; background: var(--paper);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ba-error-inner { text-align: center; padding: 0 24px; }
+  .ba-error-msg {
+    color: var(--accent);
+    font-size: clamp(15px, 2.5vw, 17px);
+    font-family: 'DM Sans', sans-serif;
+  }
+`;
 
 const BlogArticle = () => {
   const { id } = useParams();
@@ -58,9 +387,7 @@ const BlogArticle = () => {
       const res = await axios.get(`${API_URL}/api/blogs/${id}`);
       setArticle(res.data.article);
       setRelatedArticles(res.data.relatedArticles || []);
-      const commentsData = Array.isArray(res.data.comments) ? res.data.comments : [];
-      console.log("🔍 Comments data:", commentsData); // 🔍 Debug log
-      setComments(commentsData);
+      setComments(Array.isArray(res.data.comments) ? res.data.comments : []);
     } catch (err) {
       setError(err.response?.data?.message || "Error fetching article");
     } finally {
@@ -75,10 +402,7 @@ const BlogArticle = () => {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
-    if (!token) {
-      alert("Please log in to post a comment.");
-      return;
-    }
+    if (!token) { alert("Please log in to post a comment."); return; }
     try {
       setPosting(true);
       const res = await axios.post(
@@ -96,25 +420,26 @@ const BlogArticle = () => {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleAddComment();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAddComment(); }
   };
 
-  /* ── Loading skeleton ── */
+  /* ── Skeleton ── */
   if (loading) return (
     <>
+      <style>{SHIMMER_CSS}</style>
       <Navbar />
-      <div style={{ minHeight: "100vh", background: "#fafaf8" }}>
-        <div style={{ width: "100%", height: "clamp(220px, 40vw, 420px)", background: "#e8e6e1", position: "relative", overflow: "hidden" }}>
-          <div style={shimmerStyle} />
-        </div>
-        <div style={{ maxWidth: 760, margin: "0 auto", padding: "clamp(24px, 5vw, 56px) clamp(16px, 5vw, 32px)" }}>
-          {[280, 200, 340, 260, 310, 190, 280].map((w, i) => (
-            <div key={i} style={{ height: i === 0 ? 14 : 13, width: w, background: "#e8e6e1", borderRadius: 4, marginBottom: 14, position: "relative", overflow: "hidden" }}>
-              <div style={shimmerStyle} />
+      <div className="ba-root">
+        <div className="ba-skel" style={{ width: "100%", height: "clamp(280px, 55vw, 580px)" }} />
+        <div className="ba-body" style={{ opacity: 1 }}>
+          <div style={{ padding: "28px 0 20px", display: "flex", gap: 14, alignItems: "center" }}>
+            <div className="ba-skel" style={{ width: 48, height: 48, borderRadius: "50%", flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div className="ba-skel" style={{ height: 13, width: 140, marginBottom: 8 }} />
+              <div className="ba-skel" style={{ height: 11, width: 100 }} />
             </div>
+          </div>
+          {[340, 310, 380, 260, 330, 200, 290, 350, 220, 300].map((w, i) => (
+            <div key={i} className="ba-skel" style={{ height: 14, width: w, marginBottom: 16, maxWidth: "100%" }} />
           ))}
         </div>
       </div>
@@ -123,11 +448,12 @@ const BlogArticle = () => {
 
   if (error) return (
     <>
+      <style>{SHIMMER_CSS}</style>
       <Navbar />
-      <div style={{ minHeight: "100vh", background: "#fafaf8", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center", padding: "0 24px" }}>
+      <div className="ba-root ba-error-wrap">
+        <div className="ba-error-inner">
           <div style={{ fontSize: "clamp(48px, 10vw, 72px)", marginBottom: 16 }}>📄</div>
-          <p style={{ color: "#c0392b", fontSize: "clamp(15px, 3vw, 17px)", fontFamily: "Georgia, serif" }}>{error}</p>
+          <p className="ba-error-msg">{error}</p>
         </div>
       </div>
     </>
@@ -137,103 +463,60 @@ const BlogArticle = () => {
     ? Math.max(1, Math.ceil(article.content.replace(/<[^>]+>/g, "").split(/\s+/).length / 200))
     : 5;
 
+  const publishDate = article?.publishDate
+    ? new Date(article.publishDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : "";
+
   return (
     <>
+      <style>{SHIMMER_CSS}</style>
       <Navbar />
 
-      <div style={{ minHeight: "100vh", background: "#fafaf8", fontFamily: "'Georgia', serif" }}>
+      <div className="ba-root">
 
         {/* ── Hero ── */}
-        <div style={{ position: "relative", width: "100%", height: "clamp(240px, 45vw, 480px)", overflow: "hidden" }}>
+        <div className="ba-hero">
           <img
             src={article?.featuredImage || "https://source.unsplash.com/1600x600/?nature,technology"}
             alt={article?.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.65) 100%)"
-          }} />
-          <div style={{
-            position: "absolute", inset: 0, display: "flex",
-            flexDirection: "column", justifyContent: "flex-end",
-            padding: "clamp(20px, 5vw, 48px) clamp(16px, 6vw, 64px) clamp(24px, 5vw, 48px)"
-          }}>
+          <div className="ba-hero-overlay" />
+          <div className="ba-hero-content">
             {article?.category && (
-              <span style={{
-                display: "inline-block", alignSelf: "flex-start",
-                background: "#4f46e5", color: "white",
-                fontSize: "clamp(10px, 2vw, 12px)", fontWeight: 600,
-                letterSpacing: "0.08em", textTransform: "uppercase",
-                padding: "4px 12px", borderRadius: 999,
-                marginBottom: 12, fontFamily: "system-ui, sans-serif"
-              }}>
-                {article.category}
-              </span>
+              <span className="ba-category">{article.category}</span>
             )}
-            <h1 style={{
-              color: "white", margin: 0,
-              fontSize: "clamp(20px, 4.5vw, 42px)",
-              fontWeight: 700, lineHeight: 1.2,
-              maxWidth: 820,
-              textShadow: "0 2px 12px rgba(0,0,0,0.3)"
-            }}>
-              {article?.title}
-            </h1>
+            <h1 className="ba-hero-title">{article?.title}</h1>
             {article?.subtitle && (
-              <p style={{
-                color: "rgba(255,255,255,0.82)", margin: "10px 0 0",
-                fontSize: "clamp(13px, 2.5vw, 18px)",
-                maxWidth: 640, lineHeight: 1.5,
-                fontStyle: "italic"
-              }}>
-                {article.subtitle}
-              </p>
+              <p className="ba-hero-subtitle">{article.subtitle}</p>
             )}
           </div>
         </div>
 
-        {/* ── Main content ── */}
-        <div style={{ maxWidth: 780, margin: "0 auto", padding: "0 clamp(16px, 5vw, 32px)" }}>
+        {/* ── Body ── */}
+        <div className="ba-body">
 
           {/* Author bar */}
-          <div style={{
-            display: "flex", alignItems: "center", flexWrap: "wrap",
-            gap: "clamp(8px, 2vw, 16px)",
-            padding: "clamp(16px, 4vw, 28px) 0",
-            borderBottom: "1px solid #e8e4dc"
-          }}>
-            {/* ✅ Author avatar uses getProfilePic */}
+          <div className="ba-authorbar">
             <img
               src={getProfilePic(article?.userId)}
               alt={article?.userId?.name || "Author"}
-              style={{ width: "clamp(36px, 7vw, 48px)", height: "clamp(36px, 7vw, 48px)", borderRadius: "50%", objectFit: "cover", border: "2px solid #e8e4dc", flexShrink: 0 }}
+              className="ba-avatar"
               onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
             />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontWeight: 700, color: "#1a1a1a", fontFamily: "system-ui, sans-serif", fontSize: "clamp(13px, 2.5vw, 15px)" }}>
-                {article?.userId?.name || "Anonymous"}
-              </p>
-              <p style={{ margin: 0, color: "#888", fontFamily: "system-ui, sans-serif", fontSize: "clamp(11px, 2vw, 13px)" }}>
-                {article?.publishDate ? new Date(article.publishDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : ""}
-                {" · "}{readTime} min read
+              <p className="ba-author-name">{article?.userId?.name || "Anonymous"}</p>
+              <p className="ba-author-meta">
+                {publishDate}{publishDate && " · "}{readTime} min read
               </p>
             </div>
-
             <button
+              className="ba-share-btn"
               onClick={() => navigator.share?.({ title: article?.title, url: window.location.href })}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                border: "1px solid #d4d0c8", borderRadius: 999,
-                padding: "6px 14px", background: "transparent",
-                cursor: "pointer", fontFamily: "system-ui, sans-serif",
-                fontSize: "clamp(11px, 2vw, 13px)", color: "#555",
-                flexShrink: 0
-              }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
               </svg>
               Share
             </button>
@@ -241,72 +524,29 @@ const BlogArticle = () => {
 
           {/* Article body */}
           <article
-            style={{ padding: "clamp(24px, 5vw, 48px) 0 0" }}
+            className="ba-article"
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(article?.content || "<p>Blog content...</p>"),
             }}
           />
 
-          <style>{`
-            article p { font-size: clamp(15px, 2.5vw, 18px); line-height: 1.85; color: #2c2c2c; margin-bottom: 1.5em; }
-            article h2 { font-size: clamp(20px, 4vw, 28px); color: #111; margin: 2em 0 .6em; font-weight: 700; line-height: 1.25; }
-            article h3 { font-size: clamp(17px, 3vw, 22px); color: #222; margin: 1.8em 0 .5em; font-weight: 700; }
-            article img { max-width: 100%; border-radius: 10px; margin: 2em 0; display: block; }
-            article blockquote { border-left: 4px solid #4f46e5; margin: 2em 0; padding: .5em 0 .5em 1.5em; font-style: italic; color: #555; background: #f4f3ff; border-radius: 0 8px 8px 0; }
-            article ul, article ol { font-size: clamp(15px, 2.5vw, 18px); line-height: 1.8; color: #2c2c2c; padding-left: 1.5em; margin-bottom: 1.5em; }
-            article li { margin-bottom: .4em; }
-            article a { color: #4f46e5; text-decoration: underline; }
-            article code { background: #f0eff5; border-radius: 4px; padding: 2px 6px; font-size: .88em; font-family: monospace; }
-            article pre { background: #1e1e2e; color: #cdd6f4; padding: 1.2em 1.4em; border-radius: 10px; overflow-x: auto; margin: 1.5em 0; font-size: clamp(12px, 2vw, 14px); }
-            article hr { border: none; border-top: 1px solid #e8e4dc; margin: 2.5em 0; }
-          `}</style>
-
-          <div style={{ borderTop: "1px solid #e8e4dc", margin: "clamp(32px, 6vw, 56px) 0 0" }} />
+          {/* Ornamental divider */}
+          <div className="ba-divider">
+            <span className="ba-divider-icon">✦</span>
+          </div>
 
           {/* ── Related Articles ── */}
           {relatedArticles.length > 0 && (
-            <section style={{ padding: "clamp(24px, 5vw, 48px) 0" }}>
-              <h3 style={{
-                fontSize: "clamp(18px, 3.5vw, 24px)", fontWeight: 700,
-                color: "#111", marginBottom: "clamp(16px, 3vw, 28px)",
-                fontFamily: "system-ui, sans-serif"
-              }}>
-                Related Articles
-              </h3>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))",
-                gap: "clamp(12px, 2.5vw, 20px)"
-              }}>
+            <section className="ba-related">
+              <p className="ba-section-heading">More to read</p>
+              <div className="ba-related-grid">
                 {relatedArticles.map((item) => (
-                  <Link
-                    to={`/article/${item._id}`}
-                    key={item._id}
-                    style={{
-                      display: "block", background: "white",
-                      borderRadius: 12, overflow: "hidden",
-                      border: "1px solid #e8e4dc",
-                      textDecoration: "none",
-                      transition: "transform 0.2s, box-shadow 0.2s"
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}
-                  >
-                    <img
-                      src={item.featuredImage}
-                      alt={item.title}
-                      style={{ width: "100%", height: "clamp(120px, 25vw, 150px)", objectFit: "cover", display: "block" }}
-                    />
-                    <div style={{ padding: "clamp(10px, 2vw, 14px)" }}>
-                      <h4 style={{
-                        margin: 0, fontSize: "clamp(13px, 2vw, 15px)",
-                        fontWeight: 600, color: "#1a1a1a", lineHeight: 1.4,
-                        fontFamily: "system-ui, sans-serif",
-                        display: "-webkit-box", WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical", overflow: "hidden"
-                      }}>
-                        {item.title}
-                      </h4>
+                  <Link to={`/article/${item._id}`} key={item._id} className="ba-related-card">
+                    <div style={{ overflow: "hidden" }}>
+                      <img src={item.featuredImage} alt={item.title} />
+                    </div>
+                    <div className="ba-related-card-body">
+                      <h4>{item.title}</h4>
                     </div>
                   </Link>
                 ))}
@@ -315,130 +555,61 @@ const BlogArticle = () => {
           )}
 
           {/* ── Comments ── */}
-          <section style={{ padding: "clamp(24px, 5vw, 48px) 0 clamp(40px, 8vw, 80px)" }}>
-            <h3 style={{
-              fontSize: "clamp(18px, 3.5vw, 24px)", fontWeight: 700,
-              color: "#111", marginBottom: "clamp(16px, 3vw, 24px)",
-              fontFamily: "system-ui, sans-serif",
-              display: "flex", alignItems: "center", gap: 10
-            }}>
-              Comments
-              <span style={{
-                background: "#4f46e5", color: "white",
-                fontSize: "clamp(11px, 2vw, 13px)", fontWeight: 600,
-                padding: "2px 10px", borderRadius: 999,
-                fontFamily: "system-ui, sans-serif"
-              }}>
-                {comments.length}
-              </span>
-            </h3>
+          <section className="ba-comments">
+            <p className="ba-section-heading">
+              Discussion <span className="ba-comment-count">{comments.length}</span>
+            </p>
 
-            {/* Comment input */}
-            <div style={{
-              display: "flex", gap: "clamp(8px, 2vw, 12px)",
-              alignItems: "flex-start",
-              marginBottom: "clamp(20px, 4vw, 32px)",
-              flexWrap: "wrap"
-            }}>
+            {/* Input */}
+            <div className="ba-comment-input-row">
               <input
                 type="text"
-                placeholder={token ? "Share your thoughts..." : "Log in to comment"}
+                className="ba-comment-input"
+                placeholder={token ? "Share your thoughts…" : "Log in to comment"}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={!token}
-                style={{
-                  flex: "1 1 200px", minWidth: 0,
-                  padding: "clamp(10px, 2vw, 13px) clamp(12px, 2.5vw, 16px)",
-                  border: "1.5px solid #ddd8d0", borderRadius: 10,
-                  fontSize: "clamp(13px, 2.5vw, 15px)",
-                  fontFamily: "system-ui, sans-serif",
-                  background: token ? "white" : "#f5f4f2",
-                  color: "#1a1a1a", outline: "none",
-                  transition: "border-color 0.2s"
-                }}
-                onFocus={e => e.target.style.borderColor = "#4f46e5"}
-                onBlur={e => e.target.style.borderColor = "#ddd8d0"}
               />
               <button
+                className="ba-comment-btn"
                 onClick={handleAddComment}
                 disabled={!token || posting || !newComment.trim()}
-                style={{
-                  padding: "clamp(10px, 2vw, 13px) clamp(16px, 3vw, 24px)",
-                  background: posting ? "#a5b4fc" : "#4f46e5",
-                  color: "white", border: "none", borderRadius: 10,
-                  fontFamily: "system-ui, sans-serif",
-                  fontSize: "clamp(13px, 2.5vw, 15px)", fontWeight: 600,
-                  cursor: token && !posting ? "pointer" : "not-allowed",
-                  opacity: !token || !newComment.trim() ? 0.6 : 1,
-                  transition: "background 0.2s, transform 0.1s",
-                  whiteSpace: "nowrap", flexShrink: 0
-                }}
-                onMouseEnter={e => { if (token && !posting) e.currentTarget.style.background = "#4338ca"; }}
-                onMouseLeave={e => e.currentTarget.style.background = posting ? "#a5b4fc" : "#4f46e5"}
               >
-                {posting ? "Posting..." : "Post"}
+                {posting ? "Posting…" : "Post"}
               </button>
             </div>
 
-            {/* Comment list */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "clamp(16px, 3vw, 24px)" }}>
+            {/* List */}
+            <div className="ba-comment-list">
               {comments.length > 0 ? (
-                comments.map((comment) => {
-                  console.log("📝 Comment object:", comment); // Debug each comment
-                  return (
-                  <div key={comment._id} style={{
-                    display: "flex", gap: "clamp(10px, 2.5vw, 16px)",
-                    padding: "clamp(12px, 2.5vw, 18px)",
-                    background: "white", borderRadius: 12,
-                    border: "1px solid #e8e4dc",
-                    alignItems: "flex-start"
-                  }}>
-                    {/* ✅ Comment avatar uses getProfilePic with cached image for consistency */}
+                comments.map((comment) => (
+                  <div key={comment._id} className="ba-comment-item">
                     <img
                       src={getProfilePic(comment.user, comment.userProfileImage)}
                       alt={comment.user?.name || "User"}
-                      style={{
-                        width: "clamp(32px, 6vw, 40px)", height: "clamp(32px, 6vw, 40px)",
-                        borderRadius: "50%", objectFit: "cover",
-                        border: "2px solid #e8e4dc", flexShrink: 0
-                      }}
+                      className="ba-comment-avatar"
                       onError={(e) => { e.target.src = DEFAULT_AVATAR; }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                        <p style={{
-                          margin: 0, fontWeight: 700, color: "#1a1a1a",
-                          fontFamily: "system-ui, sans-serif",
-                          fontSize: "clamp(13px, 2.5vw, 14px)"
-                        }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                        <p className="ba-comment-user">
                           {comment.user?.name || comment.userName || "Anonymous"}
                         </p>
-                        <small style={{ color: "#aaa", fontSize: "clamp(10px, 1.8vw, 12px)", fontFamily: "system-ui, sans-serif", flexShrink: 0 }}>
-                          {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                        <small className="ba-comment-date">
+                          {comment.createdAt
+                            ? new Date(comment.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                            : ""}
                         </small>
                       </div>
-                      <p style={{
-                        margin: "4px 0 0", color: "#444",
-                        fontFamily: "system-ui, sans-serif",
-                        fontSize: "clamp(13px, 2.5vw, 15px)",
-                        lineHeight: 1.6, wordBreak: "break-word"
-                      }}>
-                        {comment.text || comment.comment}
-                      </p>
+                      <p className="ba-comment-text">{comment.text || comment.comment}</p>
                     </div>
                   </div>
-                  );
-                })
+                ))
               ) : (
-                <div style={{
-                  textAlign: "center", padding: "clamp(28px, 6vw, 48px) 20px",
-                  background: "white", borderRadius: 12, border: "1px solid #e8e4dc"
-                }}>
-                  <div style={{ fontSize: "clamp(28px, 6vw, 40px)", marginBottom: 10 }}>💬</div>
-                  <p style={{ color: "#888", fontFamily: "system-ui, sans-serif", margin: 0, fontSize: "clamp(13px, 2.5vw, 15px)" }}>
-                    No comments yet. Be the first to share your thoughts!
-                  </p>
+                <div className="ba-empty-comments">
+                  <div className="ba-empty-icon">💬</div>
+                  <p className="ba-empty-text">No comments yet. Be the first to share your thoughts!</p>
                 </div>
               )}
             </div>
@@ -447,12 +618,6 @@ const BlogArticle = () => {
       </div>
     </>
   );
-};
-
-const shimmerStyle = {
-  position: "absolute", inset: 0,
-  background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)",
-  animation: "shimmer 1.5s infinite",
 };
 
 export default BlogArticle;
