@@ -36,7 +36,7 @@ io.on("connection", (socket) => {
 
 // ======================= MIDDLEWARES =======================
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: process.env.FRONTEND_URL || "https://blog-1-eajx.onrender.com",
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   credentials: true
 }));
