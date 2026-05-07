@@ -42,7 +42,9 @@ const Signup = () => {
     setMessage(null);
 
     try {
-      const res = await axios.post(`${API_URL}/auth/send-otp`, formData);
+      const res = await axios.post(`${API_URL}/auth/send-otp`, formData, {
+        timeout: 10000, // 10 second timeout
+      });
       setMessage({
         type: "success",
         title: "OTP Sent!",
@@ -51,10 +53,11 @@ const Signup = () => {
       setStep(2);
       setResendTimer(60);
     } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
       setMessage({
         type: "error",
         title: "Failed to Send OTP",
-        text: err.response?.data?.message || "Something went wrong.",
+        text: errorMsg.includes("timeout") ? "Request timed out. Please check your connection." : errorMsg,
       });
     } finally {
       setLoading(false);
@@ -82,6 +85,8 @@ const Signup = () => {
         otp,
         username: formData.username,
         password: formData.password,
+      }, {
+        timeout: 10000, // 10 second timeout
       });
       setMessage({
         type: "success",
@@ -92,10 +97,11 @@ const Signup = () => {
       setOtp("");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
       setMessage({
         type: "error",
         title: "Verification Failed",
-        text: err.response?.data?.message || "Something went wrong.",
+        text: errorMsg.includes("timeout") ? "Request timed out. Please check your connection." : errorMsg,
       });
     } finally {
       setLoading(false);
@@ -107,7 +113,9 @@ const Signup = () => {
     setMessage(null);
 
     try {
-      await axios.post(`${API_URL}/auth/send-otp`, formData);
+      await axios.post(`${API_URL}/auth/send-otp`, formData, {
+        timeout: 10000, // 10 second timeout
+      });
       setMessage({
         type: "success",
         title: "OTP Resent!",
@@ -116,10 +124,11 @@ const Signup = () => {
       setResendTimer(60);
       setOtp("");
     } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
       setMessage({
         type: "error",
         title: "Failed to Resend OTP",
-        text: err.response?.data?.message || "Something went wrong.",
+        text: errorMsg.includes("timeout") ? "Request timed out. Please check your connection." : errorMsg,
       });
     } finally {
       setLoading(false);

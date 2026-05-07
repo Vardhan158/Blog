@@ -39,12 +39,6 @@ exports.sendOTP = async (req, res) => {
     // Generate OTP
     const otp = generateOTP();
 
-    // Send OTP to email
-    const emailSent = await sendOTPEmail(email, otp);
-    if (!emailSent) {
-      return res.status(500).json({ message: "Failed to send OTP email" });
-    }
-
     // Store OTP in database (overwrites if exists)
     await OTP.findOneAndUpdate(
       { email },
@@ -52,6 +46,12 @@ exports.sendOTP = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // Send OTP email in background (don't wait for it)
+    sendOTPEmail(email, otp).catch((err) => {
+      console.error(`Failed to send OTP to ${email}:`, err.message);
+    });
+
+    // Respond immediately
     res.status(200).json({
       message: "OTP sent successfully to your email",
       email,
