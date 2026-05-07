@@ -2,6 +2,7 @@ const User = require("../models/User");
 const OTP = require("../models/OTP");
 const jwt = require("jsonwebtoken");
 const { generateOTP, sendOTPEmail } = require("../utils/emailService");
+const isProduction = process.env.NODE_ENV === "production";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -52,13 +53,23 @@ exports.sendOTP = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    const emailSent = await sendOTPEmail(normalizedEmail, otp);
+    const emailResult = await sendOTPEmail(normalizedEmail, otp);
 
-    if (!emailSent) {
+    if (!emailResult.success) {
       await OTP.deleteOne({ email: normalizedEmail });
-      return res.status(500).json({
+      const response = {
         message: "Failed to send OTP email. Please check your email configuration and try again.",
-      });
+      };
+
+      if (emailResult.errorCode) {
+        response.errorCode = emailResult.errorCode;
+      }
+
+      if (!isProduction && emailResult.debug) {
+        response.debug = emailResult.debug;
+      }
+
+      return res.status(500).json(response);
     }
 
     res.status(200).json({
@@ -210,19 +221,30 @@ exports.testEmail = async (req, res) => {
 
   try {
     const testOTP = "123456";
-    const emailSent = await sendOTPEmail(email, testOTP);
+    const emailResult = await sendOTPEmail(email.trim().toLowerCase(), testOTP);
 
-    if (emailSent) {
+    if (emailResult.success) {
       res.json({
         message: "Test email sent successfully!",
         configured: true,
         details: `Check ${email} for the test OTP (123456)`,
+        messageId: emailResult.messageId,
       });
     } else {
-      res.status(500).json({
+      const response = {
         message: "Failed to send test email. Check server logs for details.",
         configured: false,
-      });
+      };
+
+      if (emailResult.errorCode) {
+        response.errorCode = emailResult.errorCode;
+      }
+
+      if (!isProduction && emailResult.debug) {
+        response.debug = emailResult.debug;
+      }
+
+      res.status(500).json(response);
     }
   } catch (err) {
     res.status(500).json({

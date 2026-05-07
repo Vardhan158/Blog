@@ -2,6 +2,7 @@ const nodemailer = require("nodemailer");
 
 // Create transporter
 let transporter;
+const isProduction = process.env.NODE_ENV === "production";
 
 const initializeTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -43,7 +44,11 @@ const sendOTPEmail = async (email, otp) => {
 
   if (!transporter) {
     console.error("❌ Email transporter not configured. Please set EMAIL_USER and EMAIL_PASS in .env");
-    return false;
+    return {
+      success: false,
+      message: "Email transporter not configured.",
+      debug: isProduction ? undefined : "EMAIL_USER or EMAIL_PASS is missing.",
+    };
   }
 
   const mailOptions = {
@@ -75,7 +80,10 @@ const sendOTPEmail = async (email, otp) => {
     const result = await transporter.sendMail(mailOptions);
     console.log(`✅ OTP email sent successfully to ${email}`);
     console.log(`   Message ID: ${result.messageId}`);
-    return true;
+    return {
+      success: true,
+      messageId: result.messageId,
+    };
   } catch (error) {
     console.error(`❌ Error sending OTP email to ${email}`);
     console.error(`   Error Code: ${error.code}`);
@@ -83,7 +91,14 @@ const sendOTPEmail = async (email, otp) => {
     if (error.response) {
       console.error(`   SMTP Response: ${error.response}`);
     }
-    return false;
+    return {
+      success: false,
+      message: "Failed to send email.",
+      errorCode: error.code,
+      debug: isProduction
+        ? undefined
+        : [error.message, error.response].filter(Boolean).join(" | "),
+    };
   }
 };
 
