@@ -212,9 +212,9 @@ exports.testEmail = async (req, res) => {
     return res.status(400).json({ message: "Email is required" });
   }
 
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!process.env.RESEND_API_KEY) {
     return res.status(400).json({
-      message: "Email not configured. Please set EMAIL_USER and EMAIL_PASS in .env",
+      message: "Email not configured. Please set RESEND_API_KEY.",
       configured: false,
     });
   }
@@ -231,25 +231,14 @@ exports.testEmail = async (req, res) => {
         messageId: emailResult.messageId,
       });
     } else {
-      const response = {
-        message: "Failed to send test email. Check server logs for details.",
+      res.status(500).json({
+        message: "Failed to send test email.",
         configured: false,
-      };
-
-      if (emailResult.errorCode) {
-        response.errorCode = emailResult.errorCode;
-      }
-
-      if (!isProduction && emailResult.debug) {
-        response.debug = emailResult.debug;
-      }
-
-      res.status(500).json(response);
+        errorCode: emailResult.errorCode,
+        ...(!isProduction && emailResult.debug && { debug: emailResult.debug }),
+      });
     }
   } catch (err) {
-    res.status(500).json({
-      message: `Error sending test email: ${err.message}`,
-      configured: false,
-    });
+    res.status(500).json({ message: `Error: ${err.message}`, configured: false });
   }
 };
