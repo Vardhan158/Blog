@@ -4,9 +4,12 @@ import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
   const navigate = useNavigate();
+  const [step, setStep] = useState(1); // Step 1: Register, Step 2: Verify OTP
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
+  const [otp, setOtp] = useState("");
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -17,28 +20,105 @@ const Signup = () => {
     }
   }, [message]);
 
+  // Resend OTP timer
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
+
   const handleChange = ({ target: { name, value } }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleOtpChange = ({ target: { value } }) => {
+    setOtp(value.replace(/\D/g, "").slice(0, 6));
+  };
+
+  const handleSendOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
     try {
-      const res = await axios.post(`${API_URL}/auth/register`, formData);
+      const res = await axios.post(`${API_URL}/auth/send-otp`, formData);
+      setMessage({
+        type: "success",
+        title: "OTP Sent!",
+        text: `Verification code sent to ${formData.email}`,
+      });
+      setStep(2);
+      setResendTimer(60);
+    } catch (err) {
+      setMessage({
+        type: "error",
+        title: "Failed to Send OTP",
+        text: err.response?.data?.message || "Something went wrong.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+
+    if (otp.length !== 6) {
+      setMessage({
+        type: "error",
+        title: "Invalid OTP",
+        text: "Please enter a 6-digit OTP",
+      });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await axios.post(`${API_URL}/auth/verify-otp`, {
+        email: formData.email,
+        otp,
+        username: formData.username,
+        password: formData.password,
+      });
       setMessage({
         type: "success",
         title: "Account created!",
         text: res.data.message || "Redirecting you to login…",
       });
       setFormData({ username: "", email: "", password: "" });
+      setOtp("");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       setMessage({
         type: "error",
-        title: "Signup Failed",
+        title: "Verification Failed",
+        text: err.response?.data?.message || "Something went wrong.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      await axios.post(`${API_URL}/auth/send-otp`, formData);
+      setMessage({
+        type: "success",
+        title: "OTP Resent!",
+        text: `New verification code sent to ${formData.email}`,
+      });
+      setResendTimer(60);
+      setOtp("");
+    } catch (err) {
+      setMessage({
+        type: "error",
+        title: "Failed to Resend OTP",
         text: err.response?.data?.message || "Something went wrong.",
       });
     } finally {
@@ -51,6 +131,7 @@ const Signup = () => {
     e.target.style.background = "#fff";
     e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,0.1)";
   };
+
   const inputBlur = (e) => {
     e.target.style.borderColor = "#e2e8f0";
     e.target.style.background = "#f8fafc";
@@ -70,6 +151,24 @@ const Signup = () => {
     fontFamily: "'Poppins', sans-serif",
     outline: "none",
     transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+  };
+
+  const otpInputStyle = {
+    width: "100%",
+    height: 56,
+    paddingLeft: 16,
+    paddingRight: 16,
+    background: "#f8fafc",
+    border: "1.5px solid #e2e8f0",
+    borderRadius: 12,
+    fontSize: 24,
+    fontWeight: 600,
+    color: "#1e293b",
+    fontFamily: "'Courier New', monospace",
+    outline: "none",
+    transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+    textAlign: "center",
+    letterSpacing: 8,
   };
 
   const fields = [
@@ -153,10 +252,10 @@ const Signup = () => {
           </div>
 
           <h1 style={{ textAlign: "center", fontSize: 22, fontWeight: 600, color: "#1e1b4b", margin: "0 0 4px", letterSpacing: "-0.3px" }}>
-            Create account
+            {step === 1 ? "Create account" : "Verify email"}
           </h1>
           <p style={{ textAlign: "center", fontSize: 13, color: "#94a3b8", margin: "0 0 28px" }}>
-            Sign up to get started for free
+            {step === 1 ? "Sign up to get started for free" : `Enter the 6-digit code sent to ${formData.email}`}
           </p>
 
           {/* Toast message */}
@@ -195,71 +294,185 @@ const Signup = () => {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {fields.map(({ name, type, placeholder, label, icon }) => (
-              <div key={name}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 6, letterSpacing: "0.3px" }}>
-                  {label}
-                </label>
-                <div style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#a5b4fc", pointerEvents: "none", display: "flex" }}>
-                    {icon}
-                  </span>
-                  <input
-                    type={type}
-                    name={name}
-                    placeholder={placeholder}
-                    value={formData[name]}
-                    onChange={handleChange}
-                    onFocus={inputFocus}
-                    onBlur={inputBlur}
-                    required
-                    style={inputStyle}
-                  />
+          {/* Step 1: Register Form */}
+          {step === 1 && (
+            <form onSubmit={handleSendOTP} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {fields.map(({ name, type, placeholder, label, icon }) => (
+                <div key={name}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 6, letterSpacing: "0.3px" }}>
+                    {label}
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#a5b4fc", pointerEvents: "none", display: "flex" }}>
+                      {icon}
+                    </span>
+                    <input
+                      type={type}
+                      name={name}
+                      placeholder={placeholder}
+                      value={formData[name]}
+                      onChange={handleChange}
+                      onFocus={inputFocus}
+                      onBlur={inputBlur}
+                      required
+                      style={inputStyle}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="signup-submit"
-              style={{
-                marginTop: 4,
-                width: "100%",
-                height: 46,
-                borderRadius: 12,
-                border: "none",
-                background: "linear-gradient(135deg, #6366f1, #818cf8)",
-                color: "#fff",
-                fontSize: 15,
-                fontWeight: 500,
-                fontFamily: "'Poppins', sans-serif",
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                transition: "opacity 0.2s, transform 0.15s",
-                letterSpacing: "0.2px",
-              }}
-            >
-              {loading ? (
-                <>
-                  <svg style={{ width: 16, height: 16, animation: "spin 0.7s linear infinite" }} viewBox="0 0 24 24" fill="none">
-                    <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
-                    <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
-                    <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="white" />
-                  </svg>
-                  Creating account…
-                </>
-              ) : (
-                "Create Account"
-              )}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className="signup-submit"
+                style={{
+                  marginTop: 4,
+                  width: "100%",
+                  height: 46,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  fontFamily: "'Poppins', sans-serif",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  transition: "opacity 0.2s, transform 0.15s",
+                  letterSpacing: "0.2px",
+                }}
+              >
+                {loading ? (
+                  <>
+                    <svg style={{ width: 16, height: 16, animation: "spin 0.7s linear infinite" }} viewBox="0 0 24 24" fill="none">
+                      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+                      <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+                      <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="white" />
+                    </svg>
+                    Sending OTP…
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* Step 2: OTP Verification Form */}
+          {step === 2 && (
+            <form onSubmit={handleVerifyOTP} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 12, letterSpacing: "0.3px" }}>
+                  Enter OTP
+                </label>
+                <input
+                  type="text"
+                  placeholder="000000"
+                  value={otp}
+                  onChange={handleOtpChange}
+                  onFocus={inputFocus}
+                  onBlur={inputBlur}
+                  maxLength="6"
+                  required
+                  style={otpInputStyle}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                className="signup-submit"
+                style={{
+                  width: "100%",
+                  height: 46,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg, #6366f1, #818cf8)",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  fontFamily: "'Poppins', sans-serif",
+                  cursor: loading || otp.length !== 6 ? "not-allowed" : "pointer",
+                  opacity: loading || otp.length !== 6 ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  transition: "opacity 0.2s, transform 0.15s",
+                  letterSpacing: "0.2px",
+                }}
+              >
+                {loading ? (
+                  <>
+                    <svg style={{ width: 16, height: 16, animation: "spin 0.7s linear infinite" }} viewBox="0 0 24 24" fill="none">
+                      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+                      <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4" />
+                      <path d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" fill="white" />
+                    </svg>
+                    Verifying…
+                  </>
+                ) : (
+                  "Verify & Create Account"
+                )}
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13, color: "#64748b" }}>Didn't receive the code?</span>
+                <button
+                  type="button"
+                  onClick={handleResendOTP}
+                  disabled={resendTimer > 0 || loading}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: resendTimer > 0 ? "#cbd5e1" : "#6366f1",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: resendTimer > 0 || loading ? "not-allowed" : "pointer",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => resendTimer === 0 && !loading && (e.target.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => e.target.style.textDecoration = "none"}
+                >
+                  {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend OTP"}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep(1);
+                  setOtp("");
+                  setMessage(null);
+                }}
+                style={{
+                  background: "none",
+                  border: "1px solid #e2e8f0",
+                  color: "#64748b",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.borderColor = "#cbd5e1";
+                  e.target.style.background = "#f8fafc";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.background = "none";
+                }}
+              >
+                Back to Registration
+              </button>
+            </form>
+          )}
 
           {/* Divider */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>
