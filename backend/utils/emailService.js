@@ -1,12 +1,20 @@
 const nodemailer = require("nodemailer");
+const axios = require("axios");
 
 let transporter;
 const isProduction = process.env.NODE_ENV === "production";
 
 const getEmailProvider = () => {
-  return (process.env.EMAIL_PROVIDER || process.env.EMAIL_SERVICE || "gmail")
-    .trim()
-    .toLowerCase();
+  if (
+    process.env.BREVO_USER ||
+    process.env.BREVO_PASS ||
+    process.env.BREVO_SMTP_LOGIN ||
+    process.env.BREVO_SMTP_KEY
+  ) {
+    return "brevo";
+  }
+
+  return (process.env.EMAIL_PROVIDER || process.env.EMAIL_SERVICE || "gmail").trim().toLowerCase();
 };
 
 const getEmailCredentials = () => {
@@ -73,6 +81,71 @@ const getFromAddress = () => {
   );
 };
 
+const sendViaBrevoApi = async (email, otp) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  const fromEmail = getFromAddress();
+
+  if (!apiKey || !fromEmail) {
+    return {
+      success: false,
+      message: "Brevo API configuration is incomplete.",
+      debug: isProduction ? undefined : "BREVO_API_KEY or sender email is missing.",
+    };
+  }
+
+  const payload = {
+    sender: {
+      email: fromEmail,
+      name: process.env.EMAIL_FROM_NAME || "Mern Blog",
+    },
+    to: [{ email }],
+    subject: "Your Email Verification OTP",
+    htmlContent: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
+        <h2 style="color: #1e293b; margin-bottom: 20px;">Email Verification</h2>
+        <p style="color: #475569; font-size: 16px; margin-bottom: 20px;">
+          Thank you for signing up! Please use the following OTP to verify your email address:
+        </p>
+        <div style="background-color: #fff; border: 2px solid #6366f1; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+          <h1 style="color: #6366f1; letter-spacing: 2px; font-size: 32px; margin: 0;">${otp}</h1>
+        </div>
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
+          This OTP is valid for 10 minutes only.
+        </p>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">
+          If you did not request this email, you can safely ignore it.
+        </p>
+      </div>
+    `,
+  };
+
+  try {
+    const response = await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        "api-key": apiKey,
+      },
+      timeout: 15000,
+    });
+
+    return { success: true, messageId: response.data?.messageId };
+  } catch (error) {
+    const debugParts = [
+      error.message,
+      error.response?.data?.message,
+      typeof error.response?.data === "string" ? error.response.data : undefined,
+    ].filter(Boolean);
+
+    return {
+      success: false,
+      message: "Failed to send email.",
+      errorCode: error.code || error.response?.status,
+      debug: isProduction ? undefined : debugParts.join(" | "),
+    };
+  }
+};
+
 const initializeTransporter = () => {
   const transportConfig = buildTransportConfig();
 
@@ -97,6 +170,11 @@ const generateOTP = () => {
 };
 
 const sendOTPEmail = async (email, otp) => {
+  if (getEmailProvider() === "brevo" && process.env.BREVO_API_KEY) {
+    console.log(`Sending OTP to ${email} via Brevo API...`);
+    return sendViaBrevoApi(email, otp);
+  }
+
   if (!transporter) {
     transporter = initializeTransporter();
   }
@@ -157,6 +235,19 @@ const sendOTPEmail = async (email, otp) => {
 };
 
 const verifyEmailConfig = async () => {
+  if (getEmailProvider() === "brevo" && process.env.BREVO_API_KEY) {
+    const fromEmail = getFromAddress();
+
+    if (!fromEmail) {
+      console.warn("WARNING: Brevo sender email not configured.");
+      return false;
+    }
+
+    console.log("Brevo API configuration detected");
+    console.log(`   Ready to send emails from: ${fromEmail}`);
+    return true;
+  }
+
   const transportConfig = buildTransportConfig();
 
   if (!transportConfig) {
