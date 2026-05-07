@@ -21,6 +21,9 @@ const initializeTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: emailPass,
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 
   console.log("✅ Email transporter created");
