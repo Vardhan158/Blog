@@ -16,22 +16,28 @@ const getRandomAvatar = () => {
 // Send OTP to email
 exports.sendOTP = async (req, res) => {
   const { email, username, password } = req.body;
+  const normalizedEmail = email?.trim().toLowerCase();
+  const normalizedUsername = username?.trim();
 
   try {
+    if (!normalizedEmail || !normalizedUsername || !password) {
+      return res.status(400).json({ message: "Email, username, and password are required" });
+    }
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({ message: "Invalid email format" });
     }
 
     // Check if user already exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
     // Check if username is already taken
-    const usernameExists = await User.findOne({ username });
+    const usernameExists = await User.findOne({ username: normalizedUsername });
     if (usernameExists) {
       return res.status(400).json({ message: "Username already taken" });
     }
@@ -41,20 +47,23 @@ exports.sendOTP = async (req, res) => {
 
     // Store OTP in database (overwrites if exists)
     await OTP.findOneAndUpdate(
-      { email },
+      { email: normalizedEmail },
       { otp },
       { upsert: true, new: true }
     );
 
-    // Send OTP email in background (don't wait for it)
-    sendOTPEmail(email, otp).catch((err) => {
-      console.error(`Failed to send OTP to ${email}:`, err.message);
-    });
+    const emailSent = await sendOTPEmail(normalizedEmail, otp);
 
-    // Respond immediately
+    if (!emailSent) {
+      await OTP.deleteOne({ email: normalizedEmail });
+      return res.status(500).json({
+        message: "Failed to send OTP email. Please check your email configuration and try again.",
+      });
+    }
+
     res.status(200).json({
       message: "OTP sent successfully to your email",
-      email,
+      email: normalizedEmail,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -64,10 +73,12 @@ exports.sendOTP = async (req, res) => {
 // Verify OTP and create user
 exports.verifyOTPAndRegister = async (req, res) => {
   const { email, otp, username, password } = req.body;
+  const normalizedEmail = email?.trim().toLowerCase();
+  const normalizedUsername = username?.trim();
 
   try {
     // Find OTP record
-    const otpRecord = await OTP.findOne({ email });
+    const otpRecord = await OTP.findOne({ email: normalizedEmail });
     if (!otpRecord) {
       return res.status(400).json({ message: "OTP expired or not found. Please request a new OTP." });
     }
@@ -78,7 +89,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
     }
 
     // Check if user still doesn't exist
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -88,15 +99,15 @@ exports.verifyOTPAndRegister = async (req, res) => {
 
     // Create user
     const user = await User.create({
-      username,
-      email,
+      username: normalizedUsername,
+      email: normalizedEmail,
       password,
-      name: username,
+      name: normalizedUsername,
       avatar,
     });
 
     // Delete OTP record after successful verification
-    await OTP.deleteOne({ email });
+    await OTP.deleteOne({ email: normalizedEmail });
 
     res.status(201).json({
       message: "User registered successfully",

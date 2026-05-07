@@ -9,15 +9,21 @@ const initializeTransporter = () => {
     return null;
   }
 
+  const emailPass = process.env.EMAIL_PASS.replace(/\s+/g, ""); // Remove all spaces from app password
+
+  console.log("🔧 Initializing email service...");
+  console.log(`   Service: ${process.env.EMAIL_SERVICE}`);
+  console.log(`   User: ${process.env.EMAIL_USER}`);
+
   transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE || "gmail",
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      pass: emailPass,
     },
   });
 
-  console.log("✅ Email service initialized");
+  console.log("✅ Email transporter created");
   return transporter;
 };
 
@@ -58,14 +64,22 @@ const sendOTPEmail = async (email, otp) => {
         </p>
       </div>
     `,
+    text: `Your OTP is: ${otp}. Valid for 10 minutes.`,
   };
 
   try {
+    console.log(`📧 Sending OTP to ${email}...`);
     const result = await transporter.sendMail(mailOptions);
     console.log(`✅ OTP email sent successfully to ${email}`);
+    console.log(`   Message ID: ${result.messageId}`);
     return true;
   } catch (error) {
-    console.error(`❌ Error sending OTP email to ${email}:`, error.message);
+    console.error(`❌ Error sending OTP email to ${email}`);
+    console.error(`   Error Code: ${error.code}`);
+    console.error(`   Error Message: ${error.message}`);
+    if (error.response) {
+      console.error(`   SMTP Response: ${error.response}`);
+    }
     return false;
   }
 };
@@ -78,12 +92,22 @@ const verifyEmailConfig = async () => {
   }
 
   try {
+    console.log("🔍 Verifying email configuration...");
     transporter = initializeTransporter();
+    
+    if (!transporter) {
+      console.error("❌ Failed to initialize transporter");
+      return false;
+    }
+
     await transporter.verify();
     console.log("✅ Email configuration verified successfully");
+    console.log(`   Ready to send emails from: ${process.env.EMAIL_USER}`);
     return true;
   } catch (error) {
-    console.error("❌ Email configuration error:", error.message);
+    console.error("❌ Email configuration verification failed:");
+    console.error(`   Error: ${error.message}`);
+    console.error(`   This usually means invalid email credentials`);
     return false;
   }
 };
