@@ -16,6 +16,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const seedAdmin = require("./utils/seedAdmin");
 const { setSocketServer } = require("./socket");
+const { verifyEmailConfig } = require("./utils/emailService");
 
 const app = express();
 const server = http.createServer(app);
@@ -103,6 +104,9 @@ mongoose
 // ======================= START SERVER =======================
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  
+  // Verify email configuration
+  await verifyEmailConfig();
 });

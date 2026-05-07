@@ -1,13 +1,25 @@
 const nodemailer = require("nodemailer");
 
 // Create transporter
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+let transporter;
+
+const initializeTransporter = () => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("⚠️  EMAIL_USER or EMAIL_PASS not configured in .env file");
+    return null;
+  }
+
+  transporter = nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  console.log("✅ Email service initialized");
+  return transporter;
+};
 
 // Generate random OTP
 const generateOTP = () => {
@@ -16,6 +28,15 @@ const generateOTP = () => {
 
 // Send OTP email
 const sendOTPEmail = async (email, otp) => {
+  if (!transporter) {
+    transporter = initializeTransporter();
+  }
+
+  if (!transporter) {
+    console.error("❌ Email transporter not configured. Please set EMAIL_USER and EMAIL_PASS in .env");
+    return false;
+  }
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -40,12 +61,31 @@ const sendOTPEmail = async (email, otp) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ OTP email sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error("Error sending OTP email:", error);
+    console.error(`❌ Error sending OTP email to ${email}:`, error.message);
     return false;
   }
 };
 
-module.exports = { generateOTP, sendOTPEmail };
+// Verify email configuration on startup
+const verifyEmailConfig = async () => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("⚠️  WARNING: Email credentials not configured. OTP emails will NOT be sent.");
+    return false;
+  }
+
+  try {
+    transporter = initializeTransporter();
+    await transporter.verify();
+    console.log("✅ Email configuration verified successfully");
+    return true;
+  } catch (error) {
+    console.error("❌ Email configuration error:", error.message);
+    return false;
+  }
+};
+
+module.exports = { generateOTP, sendOTPEmail, verifyEmailConfig };

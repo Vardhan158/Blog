@@ -181,3 +181,42 @@ exports.loginUser = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Test email configuration
+exports.testEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    return res.status(400).json({
+      message: "Email not configured. Please set EMAIL_USER and EMAIL_PASS in .env",
+      configured: false,
+    });
+  }
+
+  try {
+    const testOTP = "123456";
+    const emailSent = await sendOTPEmail(email, testOTP);
+
+    if (emailSent) {
+      res.json({
+        message: "Test email sent successfully!",
+        configured: true,
+        details: `Check ${email} for the test OTP (123456)`,
+      });
+    } else {
+      res.status(500).json({
+        message: "Failed to send test email. Check server logs for details.",
+        configured: false,
+      });
+    }
+  } catch (err) {
+    res.status(500).json({
+      message: `Error sending test email: ${err.message}`,
+      configured: false,
+    });
+  }
+};
