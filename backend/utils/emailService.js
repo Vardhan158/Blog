@@ -3,30 +3,92 @@ const nodemailer = require("nodemailer");
 let transporter;
 const isProduction = process.env.NODE_ENV === "production";
 
-const initializeTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("⚠️  EMAIL_USER or EMAIL_PASS not configured");
+const getEmailProvider = () => {
+  return (process.env.EMAIL_PROVIDER || process.env.EMAIL_SERVICE || "gmail")
+    .trim()
+    .toLowerCase();
+};
+
+const getEmailCredentials = () => {
+  const provider = getEmailProvider();
+  const user =
+    process.env.BREVO_USER ||
+    process.env.BREVO_SMTP_LOGIN ||
+    process.env.SMTP_USER ||
+    process.env.EMAIL_USER;
+  const rawPass =
+    process.env.BREVO_PASS ||
+    process.env.BREVO_SMTP_KEY ||
+    process.env.SMTP_PASS ||
+    process.env.EMAIL_PASS;
+  const pass = rawPass ? rawPass.replace(/\s+/g, "") : "";
+
+  return { provider, user, pass };
+};
+
+const buildTransportConfig = () => {
+  const { provider, user, pass } = getEmailCredentials();
+
+  if (!user || !pass) {
+    console.warn("Email credentials are missing. Configure SMTP login and key first.");
     return null;
   }
 
-  const emailPass = process.env.EMAIL_PASS.replace(/\s+/g, "");
+  if (provider === "brevo") {
+    const port = Number(process.env.SMTP_PORT || 587);
 
-  console.log("🔧 Initializing email service...");
-  console.log(`   Service: ${process.env.EMAIL_SERVICE || "gmail"}`);
-  console.log(`   User: ${process.env.EMAIL_USER}`);
+    return {
+      host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
+      port,
+      secure: port === 465,
+      auth: {
+        user,
+        pass,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    };
+  }
 
-  transporter = nodemailer.createTransport({
+  return {
     service: process.env.EMAIL_SERVICE || "gmail",
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: emailPass,
+      user,
+      pass,
     },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
-  });
+  };
+};
 
-  console.log("✅ Email transporter created");
+const getFromAddress = () => {
+  return (
+    process.env.BREVO_FROM_EMAIL ||
+    process.env.EMAIL_FROM ||
+    process.env.BREVO_USER ||
+    process.env.EMAIL_USER ||
+    process.env.BREVO_SMTP_LOGIN
+  );
+};
+
+const initializeTransporter = () => {
+  const transportConfig = buildTransportConfig();
+
+  if (!transportConfig) {
+    return null;
+  }
+
+  const { provider, user } = getEmailCredentials();
+
+  console.log("Initializing email service...");
+  console.log(`   Provider: ${provider}`);
+  console.log(`   User: ${user}`);
+
+  transporter = nodemailer.createTransport(transportConfig);
+
+  console.log("Email transporter created");
   return transporter;
 };
 
@@ -40,16 +102,16 @@ const sendOTPEmail = async (email, otp) => {
   }
 
   if (!transporter) {
-    console.error("❌ Email transporter not configured.");
+    console.error("Email transporter not configured.");
     return {
       success: false,
       message: "Email service not configured.",
-      debug: isProduction ? undefined : "EMAIL_USER or EMAIL_PASS is missing.",
+      debug: isProduction ? undefined : "SMTP credentials are missing or invalid.",
     };
   }
 
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: getFromAddress(),
     to: email,
     subject: "Your Email Verification OTP",
     html: `
@@ -73,13 +135,13 @@ const sendOTPEmail = async (email, otp) => {
   };
 
   try {
-    console.log(`📧 Sending OTP to ${email}...`);
+    console.log(`Sending OTP to ${email}...`);
     const result = await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP email sent successfully to ${email}`);
+    console.log(`OTP email sent successfully to ${email}`);
     console.log(`   Message ID: ${result.messageId}`);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error(`❌ Error sending OTP email to ${email}`);
+    console.error(`Error sending OTP email to ${email}`);
     console.error(`   Error Code: ${error.code}`);
     console.error(`   Error Message: ${error.message}`);
     if (error.response) console.error(`   SMTP Response: ${error.response}`);
@@ -95,26 +157,28 @@ const sendOTPEmail = async (email, otp) => {
 };
 
 const verifyEmailConfig = async () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("⚠️  WARNING: Email credentials not configured. OTP emails will NOT be sent.");
+  const transportConfig = buildTransportConfig();
+
+  if (!transportConfig) {
+    console.warn("WARNING: Email credentials not configured. OTP emails will NOT be sent.");
     return false;
   }
 
   try {
-    console.log("🔍 Verifying email configuration...");
+    console.log("Verifying email configuration...");
     transporter = initializeTransporter();
 
     if (!transporter) {
-      console.error("❌ Failed to initialize transporter");
+      console.error("Failed to initialize transporter");
       return false;
     }
 
     await transporter.verify();
-    console.log("✅ Email configuration verified successfully");
-    console.log(`   Ready to send emails from: ${process.env.EMAIL_USER}`);
+    console.log("Email configuration verified successfully");
+    console.log(`   Ready to send emails from: ${getFromAddress()}`);
     return true;
   } catch (error) {
-    console.error("❌ Email configuration verification failed:");
+    console.error("Email configuration verification failed:");
     console.error(`   Error: ${error.message}`);
     return false;
   }

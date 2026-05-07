@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const Signup = () => {
+  const REQUEST_TIMEOUT_MS = 30000;
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // Step 1: Register, Step 2: Verify OTP
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
@@ -10,6 +11,7 @@ const Signup = () => {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [testingEmail, setTestingEmail] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -36,14 +38,70 @@ const Signup = () => {
     setOtp(value.replace(/\D/g, "").slice(0, 6));
   };
 
+  const getRequestErrorMessage = (err) => {
+    const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
+    const debugInfo = err.response?.data?.debug;
+    const errorCode = err.response?.data?.errorCode;
+
+    if (errorMsg.toLowerCase().includes("timeout")) {
+      return "The email server is taking too long to respond. Please wait a moment and try again.";
+    }
+
+    if (debugInfo) {
+      return `${errorMsg} (${debugInfo})`;
+    }
+
+    if (errorCode) {
+      return `${errorMsg} [${errorCode}]`;
+    }
+
+    return errorMsg;
+  };
+
+  const handleTestEmail = async () => {
+    const email = formData.email.trim();
+
+    if (!email) {
+      setMessage({
+        type: "error",
+        title: "Email Required",
+        text: "Enter an email address first, then run the test.",
+      });
+      return;
+    }
+
+    setTestingEmail(true);
+    setMessage(null);
+
+    try {
+      const res = await axios.post(`${API_URL}/auth/test-email`, { email }, {
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+
+      setMessage({
+        type: "success",
+        title: "Test Email Sent",
+        text: res.data.details || `Check ${email} for the test OTP.`,
+      });
+    } catch (err) {
+      setMessage({
+        type: "error",
+        title: "Test Email Failed",
+        text: getRequestErrorMessage(err),
+      });
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
   const handleSendOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
 
     try {
-      const res = await axios.post(`${API_URL}/auth/send-otp`, formData, {
-        timeout: 10000, // 10 second timeout
+      await axios.post(`${API_URL}/auth/send-otp`, formData, {
+        timeout: REQUEST_TIMEOUT_MS,
       });
       setMessage({
         type: "success",
@@ -53,11 +111,10 @@ const Signup = () => {
       setStep(2);
       setResendTimer(60);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
       setMessage({
         type: "error",
         title: "Failed to Send OTP",
-        text: errorMsg.includes("timeout") ? "Request timed out. Please check your connection." : errorMsg,
+        text: getRequestErrorMessage(err),
       });
     } finally {
       setLoading(false);
@@ -86,7 +143,7 @@ const Signup = () => {
         username: formData.username,
         password: formData.password,
       }, {
-        timeout: 10000, // 10 second timeout
+        timeout: REQUEST_TIMEOUT_MS,
       });
       setMessage({
         type: "success",
@@ -97,11 +154,10 @@ const Signup = () => {
       setOtp("");
       setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
       setMessage({
         type: "error",
         title: "Verification Failed",
-        text: errorMsg.includes("timeout") ? "Request timed out. Please check your connection." : errorMsg,
+        text: getRequestErrorMessage(err),
       });
     } finally {
       setLoading(false);
@@ -114,7 +170,7 @@ const Signup = () => {
 
     try {
       await axios.post(`${API_URL}/auth/send-otp`, formData, {
-        timeout: 10000, // 10 second timeout
+        timeout: REQUEST_TIMEOUT_MS,
       });
       setMessage({
         type: "success",
@@ -124,11 +180,10 @@ const Signup = () => {
       setResendTimer(60);
       setOtp("");
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || "Something went wrong.";
       setMessage({
         type: "error",
         title: "Failed to Resend OTP",
-        text: errorMsg.includes("timeout") ? "Request timed out. Please check your connection." : errorMsg,
+        text: getRequestErrorMessage(err),
       });
     } finally {
       setLoading(false);
@@ -367,6 +422,28 @@ const Signup = () => {
                 ) : (
                   "Continue"
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestEmail}
+                disabled={loading || testingEmail}
+                style={{
+                  width: "100%",
+                  height: 42,
+                  borderRadius: 12,
+                  border: "1px solid #dbe4ff",
+                  background: "#f8fbff",
+                  color: "#4f46e5",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  fontFamily: "'Poppins', sans-serif",
+                  cursor: loading || testingEmail ? "not-allowed" : "pointer",
+                  opacity: loading || testingEmail ? 0.6 : 1,
+                  transition: "opacity 0.2s, transform 0.15s",
+                }}
+              >
+                {testingEmail ? "Testing email delivery..." : "Test email delivery"}
               </button>
             </form>
           )}

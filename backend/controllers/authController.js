@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const OTP = require("../models/OTP");
 const jwt = require("jsonwebtoken");
-const { generateOTP, sendOTPEmail } = require("../utils/emailService");
+const { generateOTP, sendOTPEmail, verifyEmailConfig } = require("../utils/emailService");
 const isProduction = process.env.NODE_ENV === "production";
 
 const generateToken = (id) => {
@@ -212,9 +212,11 @@ exports.testEmail = async (req, res) => {
     return res.status(400).json({ message: "Email is required" });
   }
 
-  if (!process.env.RESEND_API_KEY) {
+  const emailConfigured = await verifyEmailConfig();
+
+  if (!emailConfigured) {
     return res.status(400).json({
-      message: "Email not configured. Please set RESEND_API_KEY.",
+      message: "Email not configured. Please set your SMTP credentials.",
       configured: false,
     });
   }
