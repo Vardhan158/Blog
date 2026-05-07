@@ -1,34 +1,16 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-// Create transporter
-let transporter;
 const isProduction = process.env.NODE_ENV === "production";
+let resend;
 
-const initializeTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("⚠️  EMAIL_USER or EMAIL_PASS not configured in .env file");
+const initializeResend = () => {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("⚠️  RESEND_API_KEY not configured");
     return null;
   }
-
-  const emailPass = process.env.EMAIL_PASS.replace(/\s+/g, ""); // Remove all spaces from app password
-
-  console.log("🔧 Initializing email service...");
-  console.log(`   Service: ${process.env.EMAIL_SERVICE}`);
-  console.log(`   User: ${process.env.EMAIL_USER}`);
-
-  transporter = nodemailer.createTransport({
-    service: process.env.EMAIL_SERVICE || "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: emailPass,
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
-
-  console.log("✅ Email transporter created");
-  return transporter;
+  resend = new Resend(process.env.RESEND_API_KEY);
+  console.log("✅ Resend email service initialized");
+  return resend;
 };
 
 // Generate random OTP
@@ -38,94 +20,97 @@ const generateOTP = () => {
 
 // Send OTP email
 const sendOTPEmail = async (email, otp) => {
-  if (!transporter) {
-    transporter = initializeTransporter();
+  if (!resend) {
+    resend = initializeResend();
   }
 
-  if (!transporter) {
-    console.error("❌ Email transporter not configured. Please set EMAIL_USER and EMAIL_PASS in .env");
+  if (!resend) {
+    console.error("❌ Resend not configured. Please set RESEND_API_KEY.");
     return {
       success: false,
-      message: "Email transporter not configured.",
-      debug: isProduction ? undefined : "EMAIL_USER or EMAIL_PASS is missing.",
+      message: "Email service not configured.",
+      debug: isProduction ? undefined : "RESEND_API_KEY is missing.",
     };
   }
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Your Email Verification OTP",
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
-        <h2 style="color: #1e293b; margin-bottom: 20px;">Email Verification</h2>
-        <p style="color: #475569; font-size: 16px; margin-bottom: 20px;">
-          Thank you for signing up! Please use the following OTP to verify your email address:
-        </p>
-        <div style="background-color: #fff; border: 2px solid #6366f1; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
-          <h1 style="color: #6366f1; letter-spacing: 2px; font-size: 32px; margin: 0;">${otp}</h1>
-        </div>
-        <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
-          This OTP is valid for 10 minutes only.
-        </p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">
-          If you did not request this email, you can safely ignore it.
-        </p>
-      </div>
-    `,
-    text: `Your OTP is: ${otp}. Valid for 10 minutes.`,
-  };
 
   try {
     console.log(`📧 Sending OTP to ${email}...`);
-    const result = await transporter.sendMail(mailOptions);
+
+    const { data, error } = await resend.emails.send({
+      from: "onboarding@resend.dev", // Replace with your domain once verified e.g. "noreply@yourdomain.com"
+      to: email,
+      subject: "Your Email Verification OTP",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
+          <h2 style="color: #1e293b; margin-bottom: 20px;">Email Verification</h2>
+          <p style="color: #475569; font-size: 16px; margin-bottom: 20px;">
+            Thank you for signing up! Please use the following OTP to verify your email address:
+          </p>
+          <div style="background-color: #fff; border: 2px solid #6366f1; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #6366f1; letter-spacing: 2px; font-size: 32px; margin: 0;">${otp}</h1>
+          </div>
+          <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">
+            This OTP is valid for 10 minutes only.
+          </p>
+          <p style="color: #94a3b8; font-size: 12px; margin-top: 30px;">
+            If you did not request this email, you can safely ignore it.
+          </p>
+        </div>
+      `,
+      text: `Your OTP is: ${otp}. Valid for 10 minutes.`,
+    });
+
+    if (error) {
+      console.error(`❌ Resend error sending to ${email}:`);
+      console.error(`   Error: ${error.message}`);
+      return {
+        success: false,
+        message: "Failed to send email.",
+        errorCode: error.name,
+        debug: isProduction ? undefined : error.message,
+      };
+    }
+
     console.log(`✅ OTP email sent successfully to ${email}`);
-    console.log(`   Message ID: ${result.messageId}`);
+    console.log(`   Message ID: ${data.id}`);
     return {
       success: true,
-      messageId: result.messageId,
+      messageId: data.id,
     };
-  } catch (error) {
-    console.error(`❌ Error sending OTP email to ${email}`);
-    console.error(`   Error Code: ${error.code}`);
-    console.error(`   Error Message: ${error.message}`);
-    if (error.response) {
-      console.error(`   SMTP Response: ${error.response}`);
-    }
+  } catch (err) {
+    console.error(`❌ Exception sending OTP email to ${email}`);
+    console.error(`   Error: ${err.message}`);
     return {
       success: false,
       message: "Failed to send email.",
-      errorCode: error.code,
-      debug: isProduction
-        ? undefined
-        : [error.message, error.response].filter(Boolean).join(" | "),
+      errorCode: err.code,
+      debug: isProduction ? undefined : err.message,
     };
   }
 };
 
 // Verify email configuration on startup
 const verifyEmailConfig = async () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn("⚠️  WARNING: Email credentials not configured. OTP emails will NOT be sent.");
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("⚠️  WARNING: RESEND_API_KEY not configured. OTP emails will NOT be sent.");
     return false;
   }
 
   try {
-    console.log("🔍 Verifying email configuration...");
-    transporter = initializeTransporter();
-    
-    if (!transporter) {
-      console.error("❌ Failed to initialize transporter");
+    console.log("🔍 Verifying Resend configuration...");
+    resend = initializeResend();
+
+    if (!resend) {
+      console.error("❌ Failed to initialize Resend");
       return false;
     }
 
-    await transporter.verify();
-    console.log("✅ Email configuration verified successfully");
-    console.log(`   Ready to send emails from: ${process.env.EMAIL_USER}`);
+    console.log("✅ Resend email service ready");
+    console.log(`   Sending emails via Resend API`);
     return true;
-  } catch (error) {
-    console.error("❌ Email configuration verification failed:");
-    console.error(`   Error: ${error.message}`);
-    console.error(`   This usually means invalid email credentials`);
+  } catch (err) {
+    console.error("❌ Resend configuration check failed:");
+    console.error(`   Error: ${err.message}`);
     return false;
   }
 };
