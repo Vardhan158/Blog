@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const OTP = require("../models/OTP");
 const jwt = require("jsonwebtoken");
-const { generateOTP, sendOTPEmail, verifyEmailConfig } = require("../utils/emailService");
+const { generateOTP, sendOTPEmail, verifyEmailConfig, sendWebsiteDetailsEmail } = require("../utils/emailService");
 const isProduction = process.env.NODE_ENV === "production";
 
 const generateToken = (id) => {
@@ -56,6 +56,20 @@ exports.sendOTP = async (req, res) => {
     const emailResult = await sendOTPEmail(normalizedEmail, otp);
 
     if (!emailResult.success) {
+      if (!isProduction && process.env.ALLOW_DEV_OTP_FALLBACK !== "false") {
+        console.warn("OTP email failed; using development OTP fallback.");
+        if (emailResult.errorCode) console.warn(`   Error Code: ${emailResult.errorCode}`);
+        if (emailResult.debug) console.warn(`   Debug: ${emailResult.debug}`);
+
+        return res.status(200).json({
+          message: "OTP generated, but email delivery failed. Use the development OTP shown below.",
+          email: normalizedEmail,
+          devOtp: otp,
+          emailError: emailResult.errorCode || emailResult.message || "Email delivery failed",
+          ...(!isProduction && emailResult.debug && { debug: emailResult.debug }),
+        });
+      }
+
       await OTP.deleteOne({ email: normalizedEmail });
       const response = {
         message: "Failed to send OTP email. Please check your email configuration and try again.",
@@ -242,5 +256,30 @@ exports.testEmail = async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ message: `Error: ${err.message}`, configured: false });
+  }
+};
+
+exports.subscribeNewsletter = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required" });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, message: "Invalid email format" });
+  }
+
+  try {
+    const result = await sendWebsiteDetailsEmail(email.trim().toLowerCase());
+    if (result.success) {
+      res.json({ success: true, message: "Website details sent to your email!" });
+    } else {
+      res.status(500).json({ success: false, message: "Failed to send email." });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

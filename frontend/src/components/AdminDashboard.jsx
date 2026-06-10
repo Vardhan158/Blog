@@ -16,7 +16,7 @@ const tabs = [
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [activeTab, setActiveTab] = useState("blogs");
   const [dashboard, setDashboard] = useState({
     stats: { blogs: 0, users: 0, comments: 0 },

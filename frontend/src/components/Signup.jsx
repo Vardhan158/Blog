@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import {
+  clearAdminSession,
+  clearLegacyLocalAuth,
+  setProfileImage,
+  setToken,
+  setUser,
+  setUsername,
+} from "../utils/authStorage";
 
 const Signup = () => {
   const REQUEST_TIMEOUT_MS = 30000;
@@ -100,13 +108,15 @@ const Signup = () => {
     setMessage(null);
 
     try {
-      await axios.post(`${API_URL}/auth/send-otp`, formData, {
+      const res = await axios.post(`${API_URL}/auth/send-otp`, formData, {
         timeout: REQUEST_TIMEOUT_MS,
       });
       setMessage({
         type: "success",
         title: "OTP Sent!",
-        text: `Verification code sent to ${formData.email}`,
+        text: res.data.devOtp
+          ? `Email delivery failed locally. Use development OTP: ${res.data.devOtp}`
+          : `Verification code sent to ${formData.email}`,
       });
       setStep(2);
       setResendTimer(60);
@@ -150,9 +160,22 @@ const Signup = () => {
         title: "Account created!",
         text: res.data.message || "Redirecting you to login…",
       });
+      if (res.data.token) {
+        const user = res.data.user || {};
+
+        clearAdminSession();
+        clearLegacyLocalAuth();
+        setToken(res.data.token);
+        setUser(user);
+        setUsername(user.name || user.username || formData.username || "");
+        if (user.avatar || user.profileImage) {
+          setProfileImage(user.avatar || user.profileImage);
+        }
+      }
+
       setFormData({ username: "", email: "", password: "" });
       setOtp("");
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate("/home", { replace: true }), 800);
     } catch (err) {
       setMessage({
         type: "error",
@@ -169,13 +192,15 @@ const Signup = () => {
     setMessage(null);
 
     try {
-      await axios.post(`${API_URL}/auth/send-otp`, formData, {
+      const res = await axios.post(`${API_URL}/auth/send-otp`, formData, {
         timeout: REQUEST_TIMEOUT_MS,
       });
       setMessage({
         type: "success",
         title: "OTP Resent!",
-        text: `New verification code sent to ${formData.email}`,
+        text: res.data.devOtp
+          ? `Email delivery failed locally. Use development OTP: ${res.data.devOtp}`
+          : `New verification code sent to ${formData.email}`,
       });
       setResendTimer(60);
       setOtp("");

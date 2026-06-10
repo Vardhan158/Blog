@@ -170,9 +170,14 @@ const generateOTP = () => {
 };
 
 const sendOTPEmail = async (email, otp) => {
+  let apiError = null;
   if (getEmailProvider() === "brevo" && process.env.BREVO_API_KEY) {
     console.log(`Sending OTP to ${email} via Brevo API...`);
-    return sendViaBrevoApi(email, otp);
+    const result = await sendViaBrevoApi(email, otp);
+    if (result.success) return result;
+
+    apiError = result;
+    console.warn(`Brevo API failed (${result.errorCode}). Attempting SMTP fallback...`);
   }
 
   if (!transporter) {
@@ -181,7 +186,7 @@ const sendOTPEmail = async (email, otp) => {
 
   if (!transporter) {
     console.error("Email transporter not configured.");
-    return {
+    return apiError || {
       success: false,
       message: "Email service not configured.",
       debug: isProduction ? undefined : "SMTP credentials are missing or invalid.",
@@ -275,4 +280,91 @@ const verifyEmailConfig = async () => {
   }
 };
 
-module.exports = { generateOTP, sendOTPEmail, verifyEmailConfig };
+const sendWebsiteDetailsEmail = async (email) => {
+  if (!transporter) {
+    transporter = initializeTransporter();
+  }
+
+  if (!transporter) {
+    console.error("Email transporter not configured.");
+    return {
+      success: false,
+      message: "Email service not configured.",
+    };
+  }
+
+  console.log(`Preparing to send website details to: ${email}`);
+
+  const mailOptions = {
+    from: getFromAddress(),
+    to: email,
+    subject: "Welcome to BlogPage - Website Details",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 0; margin: 0; background-color: #f4f7fa;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td align="center" style="padding: 20px 0;">
+              <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+                <!-- Header -->
+                <tr>
+                  <td align="center" style="background-color: #6366f1; padding: 40px 20px;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 32px;">BlogPage</h1>
+                    <p style="color: #ffffff; opacity: 0.9; margin: 10px 0 0; font-size: 16px;">Your gateway to amazing stories</p>
+                  </td>
+                </tr>
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <h2 style="color: #1e1b4b; margin: 0 0 20px; font-size: 24px;">Welcome to our community!</h2>
+                    <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin-bottom: 20px;">
+                      Thank you for subscribing to <strong>BlogPage</strong>. We're excited to have you with us. Our platform is designed for creators and readers alike.
+                    </p>
+
+                    <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                      <h3 style="color: #6366f1; margin: 0 0 15px; font-size: 18px;">What you can do on BlogPage:</h3>
+                      <ul style="padding: 0; margin: 0; list-style-type: none; color: #4b5563; line-height: 1.8;">
+                        <li style="margin-bottom: 10px;">✅ <strong>Discover:</strong> Explore diverse categories from Tech to Lifestyle.</li>
+                        <li style="margin-bottom: 10px;">✅ <strong>Share:</strong> Publish your own blogs and build your audience.</li>
+                        <li style="margin-bottom: 10px;">✅ <strong>Engage:</strong> Like and comment on posts that inspire you.</li>
+                        <li style="margin-bottom: 10px;">✅ <strong>Connect:</strong> Follow your favorite authors and get notified.</li>
+                      </ul>
+                    </div>
+
+                    <div style="text-align: center;">
+                      <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}"
+                         style="background-color: #6366f1; color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                        Visit Website Now
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                  <td align="center" style="background-color: #f9fafb; padding: 20px; border-top: 1px solid #e5e7eb;">
+                    <p style="font-size: 12px; color: #9ca3af; margin: 0;">
+                      &copy; 2025 BlogPage. All rights reserved.
+                    </p>
+                    <p style="font-size: 12px; color: #9ca3af; margin: 5px 0 0;">
+                      If you didn't subscribe, you can safely ignore this email.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `,
+  };
+
+  try {
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`Email successfully sent to ${email}. MessageId: ${result.messageId}`);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error(`Error sending website details to ${email}:`, error);
+    return { success: false, message: error.message };
+  }
+};
+
+module.exports = { generateOTP, sendOTPEmail, verifyEmailConfig, sendWebsiteDetailsEmail };

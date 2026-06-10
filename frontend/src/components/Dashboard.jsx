@@ -279,7 +279,7 @@ export default function Dashboard() {
 
   const token = getToken();
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
-  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     const fetchUserData = async () => {

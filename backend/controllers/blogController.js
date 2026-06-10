@@ -58,13 +58,14 @@ const publishBlog = async (req, res) => {
     });
 
     const recipients = await User.find({ _id: { $ne: userId } }).distinct("_id");
-    await createNotificationsForRecipients({
+    // Run notification generation in background to avoid blocking response
+    createNotificationsForRecipients({
       recipients,
       actor: userId,
       blog: newBlog._id,
       type: "post",
       message: `${req.user?.name || "Someone"} published a new blog "${title}".`,
-    });
+    }).catch(err => console.error("Background notification error:", err));
 
     res.status(201).json({ success: true, message: "Blog published successfully", blog: newBlog });
   } catch (err) {
@@ -76,9 +77,40 @@ const publishBlog = async (req, res) => {
 // Get all blogs (public)
 const getBlogs = async (req, res) => {
   try {
-    const blogs = await Blog.find()
-      .sort({ createdAt: -1 })
-      .populate("userId", "name email avatar profileImage"); // ✅ added profileImage
+    const { sort } = req.query;
+    let blogs;
+
+    if (sort === "popular") {
+      // Sort by number of likes (descending)
+      blogs = await Blog.aggregate([
+        {
+          $addFields: {
+            likesCount: { $size: { $ifNull: ["$likes", []] } }
+          }
+        },
+        { $sort: { likesCount: -1, createdAt: -1 } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userId"
+          }
+        },
+        { $unwind: "$userId" },
+        {
+          $project: {
+            "userId.password": 0,
+            "userId.email": 0,
+          }
+        }
+      ]);
+    } else {
+      blogs = await Blog.find()
+        .sort({ createdAt: -1 })
+        .populate("userId", "name email avatar profileImage");
+    }
+
     res.json({ success: true, count: blogs.length, blogs });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching blogs", error: err.message });

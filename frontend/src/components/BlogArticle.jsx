@@ -6,17 +6,18 @@ import DOMPurify from "dompurify";
 import { getToken } from "../utils/authStorage";
 
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const getProfilePic = (user, cachedImage = null) => {
   if (cachedImage && typeof cachedImage === "string" && cachedImage.trim()) {
     if (cachedImage.startsWith("http")) return cachedImage;
-    return `https://blog-rsxx.onrender.com/uploads/${cachedImage.replace(/\\/g, "/")}`;
+    return `${API_URL}/uploads/${cachedImage.replace(/\\/g, "/")}`;
   }
   if (!user) return DEFAULT_AVATAR;
   const image = user?.profileImage || user?.avatar || "";
   if (!image || (typeof image === "string" && image.trim() === "")) return DEFAULT_AVATAR;
   if (typeof image === "string" && image.startsWith("http")) return image;
-  return `https://blog-rsxx.onrender.com/uploads/${String(image).replace(/\\/g, "/")}`;
+  return `${API_URL}/uploads/${String(image).replace(/\\/g, "/")}`;
 };
 
 /* ─── Shimmer keyframe injected once ─── */
@@ -378,8 +379,6 @@ const BlogArticle = () => {
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
   const token = getToken();
-
-  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
 
   const fetchArticleData = async () => {
     try {

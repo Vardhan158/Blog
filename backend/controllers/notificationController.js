@@ -3,13 +3,18 @@ const { emitToUser } = require("../socket");
 const { sendPushNotification } = require("../utils/webPush");
 
 const deliverNotification = async (notification) => {
-  emitToUser(notification.recipient, "notification:new", notification);
-  await sendPushNotification(notification.recipient, {
-    title: "BlogPage",
-    body: notification.message,
-    url: notification.blog?._id ? `/article/${notification.blog._id}` : "/dashboard",
-    notificationId: notification._id?.toString(),
-  });
+  try {
+    emitToUser(notification.recipient, "notification:new", notification);
+    // Send push notification in background
+    sendPushNotification(notification.recipient, {
+      title: "BlogPage",
+      body: notification.message,
+      url: notification.blog?._id ? `/article/${notification.blog._id}` : "/dashboard",
+      notificationId: notification._id?.toString(),
+    }).catch(err => console.error("Push notification delivery error:", err));
+  } catch (err) {
+    console.error("Socket emission error:", err);
+  }
 };
 
 const createNotification = async ({ recipient, actor, blog, type, message }) => {
@@ -80,15 +85,16 @@ const createNotificationsForRecipients = async ({ recipients, actor, blog, type,
     }))
   );
 
+  // Use lean() for faster fetching if we don't need Mongoose documents
   const populatedNotifications = await Notification.find({
     _id: { $in: notifications.map((notification) => notification._id) },
   })
     .populate("actor", "name username avatar")
-    .populate("blog", "title");
+    .populate("blog", "title")
+    .lean();
 
-  await Promise.all(
-    populatedNotifications.map((notification) => deliverNotification(notification))
-  );
+  // Don't wait for all deliveries to finish sequentially
+  populatedNotifications.forEach((notification) => deliverNotification(notification));
 
   return populatedNotifications;
 };

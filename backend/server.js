@@ -21,16 +21,24 @@ const { verifyEmailConfig } = require("./utils/emailService");
 const app = express();
 const server = http.createServer(app);
 
-// ======================= ALLOWED ORIGINS =======================
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://blog-1-eajx.onrender.com",
 ];
 
-// ======================= SOCKET.IO =======================
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  return /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+};
+
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   },
@@ -53,18 +61,11 @@ io.on("connection", (socket) => {
   });
 });
 
-// ======================= MIDDLEWARES =======================
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (Postman, mobile apps, etc.)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
@@ -74,10 +75,8 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ======================= STATIC FILES =======================
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ======================= ROUTES =======================
 app.use("/auth", authRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/comments", commentRoutes);
@@ -85,12 +84,10 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// ======================= DEFAULT ROUTE =======================
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
 
-// ======================= MONGODB CONNECTION =======================
 mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
@@ -100,8 +97,7 @@ mongoose
   .catch((err) => {
     console.error("MongoDB connection error:", err);
   });
-
-// ======================= START SERVER =======================
+  
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, async () => {

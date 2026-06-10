@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 const footerStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');
@@ -282,6 +283,38 @@ const footerStyles = `
 
 export default function Footer() {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState({ type: "", message: "" });
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setLoading(true);
+    setStatus({ type: "", message: "" });
+
+    try {
+      const response = await axios.post(`${API_URL}/auth/subscribe`, { email });
+      if (response.data.success) {
+        setStatus({ type: "success", message: "Details sent to your email!" });
+        setEmail("");
+      } else {
+        setStatus({ type: "error", message: "Something went wrong." });
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      setStatus({
+        type: "error",
+        message: error.response?.data?.message || "Failed to send details.",
+      });
+    } finally {
+      setLoading(false);
+      // Clear message after 5 seconds
+      setTimeout(() => setStatus({ type: "", message: "" }), 5000);
+    }
+  };
 
   return (
     <>
@@ -314,16 +347,30 @@ export default function Footer() {
                 developers, designers, and creators around the world.
               </p>
 
-              <div className="ft-newsletter">
+              <form onSubmit={handleSubscribe} className="ft-newsletter" style={{ position: 'relative' }}>
                 <input
                   className="ft-nl-input"
                   type="email"
                   placeholder="Your email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
-                <button className="ft-nl-btn">Subscribe</button>
-              </div>
+                <button type="submit" className="ft-nl-btn" disabled={loading}>
+                  {loading ? "Sending..." : "Subscribe"}
+                </button>
+              </form>
+
+              {status.message && (
+                <p style={{
+                  fontSize: '12px',
+                  marginTop: '8px',
+                  color: status.type === 'success' ? '#10b981' : '#ef4444',
+                  fontWeight: '500'
+                }}>
+                  {status.message}
+                </p>
+              )}
 
               <div className="ft-socials">
                 <a href="#" aria-label="Twitter" className="ft-social-link">

@@ -4,6 +4,8 @@ import "react-quill-new/dist/quill.snow.css";
 import axios from "axios";
 import { clearLegacyLocalAuth, clearUserSession, getToken } from "../utils/authStorage";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
 
@@ -414,7 +416,7 @@ const CreateBlog = ({ userData, setActiveTab }) => {
       if (image) formData.append("featuredImage", image);
 
       await axios.post(
-        "https://blog-rsxx.onrender.com/api/blogs/publish",
+        `${API_URL}/api/blogs/publish`,
         formData,
         { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
       );

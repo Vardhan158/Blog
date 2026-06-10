@@ -3,7 +3,7 @@ import { FaHeart } from "react-icons/fa";
 import axios from "axios";
 import { getToken } from "../utils/authStorage";
 
-const API_URL = "https://blog-rsxx.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/847/847969.png";
 
 const getProfilePic = (user) => {

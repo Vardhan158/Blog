@@ -31,14 +31,16 @@ const Carousel = () => {
   const positionRef = useRef(0);
   const isPausedRef = useRef(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const blogRes = await axios.get(`${API_URL}/api/blogs`);
+        // Fetch "popular" blogs for the Featured section
+        // This sorts by likes count, falling back to newest first
+        const blogRes = await axios.get(`${API_URL}/api/blogs?sort=popular`);
         const blogsData = blogRes.data.blogs || blogRes.data || [];
-        setBlogs(blogsData.reverse());
+        setBlogs(blogsData);
       } catch (error) {
         console.error("Error fetching blogs:", error);
       }
@@ -52,14 +54,23 @@ const Carousel = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const duplicatedArticles = [...blogs, ...blogs, ...blogs];
+  const duplicatedArticles = blogs.length > visibleCount ? [...blogs, ...blogs, ...blogs] : blogs;
   const STEP = CARD_WIDTH + CARD_GAP;
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || blogs.length === 0) return;
 
+    // Reset position
     positionRef.current = 0;
+    container.style.transform = "translateX(0px)";
+
+    // Only animate if there are enough blogs to scroll
+    if (blogs.length <= visibleCount) {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      return;
+    }
+
     const totalPx = blogs.length * STEP;
     const speed = visibleCount === 1 ? 0.35 : 0.5;
 

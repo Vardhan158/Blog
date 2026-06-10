@@ -5,7 +5,7 @@ import Navbar from "../components/Navbar";
 import { FaHeart, FaSearch } from "react-icons/fa";
 import { getToken, getUser } from "../utils/authStorage";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://blog-rsxx.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const SkeletonCard = () => (
   <div style={styles.card}>
