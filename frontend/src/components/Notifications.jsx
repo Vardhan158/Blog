@@ -5,7 +5,7 @@ import { connectSocketForUser } from "../utils/socket";
 import { getToken, getUser } from "../utils/authStorage";
 
 const Notifications = ({ onUnreadCountChange }) => {
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com";
   const token = getToken();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
