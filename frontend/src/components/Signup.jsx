@@ -21,7 +21,7 @@ const Signup = () => {
   const [resendTimer, setResendTimer] = useState(0);
   const [testingEmail, setTestingEmail] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com";
 
   useEffect(() => {
     if (message) {
