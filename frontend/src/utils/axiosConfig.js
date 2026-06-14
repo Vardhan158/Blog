@@ -3,7 +3,7 @@ import { getToken } from "./authStorage";
 
 // Create axios instance with default timeout
 export const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+  baseURL: import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com",
   timeout: 10000, // 10 second default timeout
 });
 
