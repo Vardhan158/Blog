@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getToken } from "./authStorage";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com";
 
 const urlBase64ToUint8Array = (base64String) => {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
