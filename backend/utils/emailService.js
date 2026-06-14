@@ -17,10 +17,13 @@ const sendViaBrevoApi = async (email, otp) => {
   const apiKey = process.env.BREVO_API_KEY;
   const fromEmail = getFromAddress();
 
-  if (!apiKey) return { success: false, message: "BREVO_API_KEY missing" };
+  if (!apiKey) return { success: false, message: "BREVO_API_KEY is missing from environment variables." };
+  if (!fromEmail || fromEmail === "noreply@blogpage.com") {
+    return { success: false, message: "BREVO_FROM_EMAIL is missing. Brevo requires a verified sender email." };
+  }
 
   const payload = {
-    sender: { email: fromEmail, name: "BlogPage" },
+    sender: { email: fromEmail, name: process.env.EMAIL_FROM_NAME || "BlogPage" },
     to: [{ email }],
     subject: "Your Email Verification OTP",
     htmlContent: `
@@ -33,14 +36,22 @@ const sendViaBrevoApi = async (email, otp) => {
   };
 
   try {
+    console.log(`Calling Brevo API for ${email} using sender ${fromEmail}...`);
     const response = await axios.post("https://api.brevo.com/v3/smtp/email", payload, {
       headers: { "api-key": apiKey, "content-type": "application/json" },
       timeout: 10000,
     });
+    console.log("Brevo API Success:", response.data?.messageId);
     return { success: true, messageId: response.data?.messageId };
   } catch (error) {
-    console.error("Brevo API Error:", error.response?.data || error.message);
-    return { success: false, message: error.message };
+    const errorData = error.response?.data;
+    console.error("Brevo API Error Details:", JSON.stringify(errorData || error.message));
+
+    let errorMessage = error.message;
+    if (errorData?.code === "unauthorized") errorMessage = "Invalid BREVO_API_KEY. Please check your Brevo dashboard.";
+    if (errorData?.message?.includes("sender")) errorMessage = `Sender email (${fromEmail}) is not verified in Brevo.`;
+
+    return { success: false, message: errorMessage };
   }
 };
 
