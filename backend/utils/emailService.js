@@ -1,8 +1,27 @@
 const nodemailer = require("nodemailer");
 const axios = require("axios");
+const { Resend } = require("resend");
 
 let transporter;
 const isProduction = process.env.NODE_ENV === "production";
+
+const sendViaResend = async (email, otp) => {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'onboarding@resend.dev', // You can change this once you verify a domain
+      to: email,
+      subject: 'Your Verification OTP',
+      html: `<p>Your OTP is: <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
+    });
+
+    if (error) throw error;
+    return { success: true, messageId: data.id };
+  } catch (error) {
+    console.error("Resend API Error:", error);
+    return { success: false, errorCode: "RESEND_ERROR", message: error.message };
+  }
+};
 
 const getEmailProvider = () => {
   if (
@@ -186,6 +205,15 @@ const generateOTP = () => {
 
 const sendOTPEmail = async (email, otp) => {
   let apiError = null;
+
+  // Try Resend first (Production/Render friendly)
+  if (process.env.RESEND_API_KEY) {
+    console.log(`Sending OTP to ${email} via Resend API...`);
+    const result = await sendViaResend(email, otp);
+    if (result.success) return result;
+    apiError = result;
+  }
+
   if (getEmailProvider() === "brevo" && process.env.BREVO_API_KEY) {
     console.log(`Sending OTP to ${email} via Brevo API...`);
     const result = await sendViaBrevoApi(email, otp);
