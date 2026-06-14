@@ -71,19 +71,14 @@ exports.sendOTP = async (req, res) => {
       }
 
       await OTP.deleteOne({ email: normalizedEmail });
-      const response = {
-        message: "Failed to send OTP email. Please check your email configuration and try again.",
-      };
 
-      if (emailResult.errorCode) {
-        response.errorCode = emailResult.errorCode;
-      }
-
-      if (!isProduction && emailResult.debug) {
-        response.debug = emailResult.debug;
-      }
-
-      return res.status(500).json(response);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email.",
+        details: emailResult.message,
+        errorCode: emailResult.errorCode,
+        suggestion: "Ensure BREVO_API_KEY and BREVO_FROM_EMAIL are correctly set in Render Environment Variables."
+      });
     }
 
     res.status(200).json({
