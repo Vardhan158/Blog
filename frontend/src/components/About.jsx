@@ -8,19 +8,19 @@ const insights = [
     title: "Practical Insights",
     text: "Hands-on coding lessons and real project experiences to help you grow faster and smarter.",
     icon: "⚡",
-    accent: "#f59e0b",
+    accent: "#6366f1",
   },
   {
     title: "Clean & Engaging Reads",
     text: "We focus on clarity and simplicity — every article is crafted to be easy and enjoyable to read.",
     icon: "✦",
-    accent: "#10b981",
+    accent: "#818cf8",
   },
   {
     title: "Built for Developers",
     text: "Articles written from a developer's perspective — honest, practical, and easy to apply.",
     icon: "⬡",
-    accent: "#6366f1",
+    accent: "#a78bfa",
   },
 ];
 
@@ -43,19 +43,19 @@ const About = () => {
       <Navbar />
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap');
 
         :root {
-          --ink: #0d0d0d;
-          --ink-soft: #1c1c1c;
-          --cream: #f8f5ee;
-          --cream-dark: #ede9df;
-          --amber: #d97706;
-          --amber-light: #fef3c7;
-          --muted: #6b6459;
-          --border: #e2ddd3;
-          --font-display: 'Cormorant Garamond', Georgia, serif;
-          --font-body: 'Outfit', sans-serif;
+          --ink: #1e1b4b;
+          --ink-soft: #2e2a5b;
+          --cream: #f8faff;
+          --cream-dark: #f1f5f9;
+          --amber: #6366f1;
+          --amber-light: #ede9fe;
+          --muted: #64748b;
+          --border: #e2e8f0;
+          --font-display: 'Poppins', sans-serif;
+          --font-body: 'DM Sans', sans-serif;
         }
 
         .ab-root {
@@ -86,7 +86,7 @@ const About = () => {
           position: absolute;
           top: -120px; left: 50%; transform: translateX(-50%);
           width: 700px; height: 500px;
-          background: radial-gradient(ellipse, rgba(217,119,6,0.18) 0%, transparent 65%);
+          background: radial-gradient(ellipse, rgba(99,102,241,0.18) 0%, transparent 65%);
           pointer-events: none;
         }
 
@@ -100,7 +100,7 @@ const About = () => {
           letter-spacing: 0.18em;
           text-transform: uppercase;
           color: var(--amber);
-          border: 1px solid rgba(217,119,6,0.35);
+          border: 1px solid rgba(99,102,241,0.35);
           padding: 6px 16px;
           border-radius: 999px;
           margin-bottom: clamp(20px, 3vw, 28px);
@@ -261,7 +261,7 @@ const About = () => {
           display: flex;
           align-items: center;
           gap: 8px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+          box-shadow: 0 8px 32px rgba(99,102,241,0.18);
         }
 
         .badge-dot {
@@ -362,7 +362,7 @@ const About = () => {
 
         .ab-card:hover {
           transform: translateX(6px);
-          box-shadow: -4px 4px 0 0 var(--amber);
+          box-shadow: -4px 4px 0 0 rgba(99,102,241,0.2);
           border-color: var(--amber);
         }
 
@@ -447,7 +447,7 @@ const About = () => {
           align-items: center;
           gap: 8px;
           padding: clamp(12px, 2vw, 15px) clamp(24px, 4vw, 36px);
-          background: var(--amber);
+          background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
           color: white;
           border-radius: 999px;
           font-size: clamp(13px, 1.8vw, 15px);
@@ -455,13 +455,14 @@ const About = () => {
           text-decoration: none;
           border: none;
           cursor: pointer;
-          transition: background 0.2s, transform 0.15s;
+          transition: all 0.2s;
           font-family: var(--font-body);
         }
 
         .ab-cta:hover {
-          background: #b45309;
+          opacity: 0.9;
           transform: translateY(-2px);
+          box-shadow: 0 4px 16px rgba(99,102,241,0.3);
         }
 
         .ab-mission-list {
@@ -490,7 +491,7 @@ const About = () => {
           font-family: var(--font-display);
           font-size: clamp(22px, 3.5vw, 30px);
           font-weight: 700;
-          color: var(--amber);
+          color: #818cf8;
           flex-shrink: 0;
           min-width: 36px;
           line-height: 1;
