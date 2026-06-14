@@ -34,7 +34,7 @@ const EditProfile = ({ userData, setUserData }) => {
   // Security states
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com";
 
   const getGravatar = (userEmail) => {
     if (!userEmail) return "/default-profile.png";
