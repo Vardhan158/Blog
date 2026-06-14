@@ -31,7 +31,7 @@ const Carousel = () => {
   const positionRef = useRef(0);
   const isPausedRef = useRef(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com";
 
   useEffect(() => {
     const fetchData = async () => {
