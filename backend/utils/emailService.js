@@ -73,15 +73,26 @@ const initializeTransporter = () => {
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 const sendOTPEmail = async (email, otp) => {
-  // 1. Try Brevo API first (Bypasses Render SMTP blocks)
+  // 1. Try Brevo API first (Required for Render)
   if (process.env.BREVO_API_KEY) {
     console.log(`Attempting API delivery to ${email}...`);
     const result = await sendViaBrevoApi(email, otp);
-    if (result.success) return result;
-    console.warn("API delivery failed, checking SMTP fallback...");
+
+    // If API works, return success.
+    // If it fails with a real error (like 401/400), return that error immediately.
+    // We only fall back to SMTP if the API key is missing.
+    if (result.success || result.message?.includes("verified") || result.message?.includes("key")) {
+      return result;
+    }
+
+    console.warn("API delivery failed with network error, checking SMTP fallback (local only)...");
   }
 
-  // 2. Fallback to SMTP
+  // 2. Fallback to SMTP (Only works on Localhost, blocked on Render)
+  if (isProduction) {
+    return { success: false, message: "Email API failed and SMTP is disabled in production to prevent timeouts." };
+  }
+
   if (!transporter) initializeTransporter();
 
   if (!transporter) {
