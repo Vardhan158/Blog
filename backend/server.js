@@ -24,7 +24,7 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
-  "https://blog-1-eajx.onrender.com",
+  "https://blog-frontend-8d5p.onrender.com",
 ];
 
 const isAllowedOrigin = (origin) => {
