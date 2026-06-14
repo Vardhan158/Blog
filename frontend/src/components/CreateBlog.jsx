@@ -4,7 +4,7 @@ import "react-quill-new/dist/quill.snow.css";
 import axios from "axios";
 import { clearLegacyLocalAuth, clearUserSession, getToken } from "../utils/authStorage";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "https://blog-backend-omyx.onrender.com";
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap');
