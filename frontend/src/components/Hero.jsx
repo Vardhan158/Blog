@@ -15,7 +15,7 @@ const heroStyles = `
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: #fafafe;
+    background: #f8faff;
     padding: 100px 24px 80px;
   }
 
@@ -33,7 +33,7 @@ const heroStyles = `
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse 75% 65% at 50% 40%, rgba(250,250,254,0) 30%, #fafafe 100%);
+    background: radial-gradient(ellipse 75% 65% at 50% 40%, rgba(250,250,254,0) 30%, #f8faff 100%);
   }
 
   .hero-glow {

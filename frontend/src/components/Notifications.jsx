@@ -136,9 +136,9 @@ const Notifications = ({ onUnreadCountChange }) => {
         className="notif-root"
         style={{
           width: "100%",
-          maxWidth: 720,
+          maxWidth: 800,
           margin: "0 auto",
-          padding: "0 4px",
+          padding: "32px 24px",
         }}
       >
         {/* Header */}

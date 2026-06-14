@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import md5 from "md5";
 import axios from "axios";
-import { FaBell, FaGlobe, FaLock, FaShieldAlt, FaUserCog, FaCamera, FaChevronRight } from "react-icons/fa";
+import { FaShieldAlt, FaUserCog, FaCamera, FaChevronRight } from "react-icons/fa";
 import { getToken, getUser, setProfileImage, setUser } from "../utils/authStorage";
 
 const settingsItems = [
@@ -19,36 +19,21 @@ const settingsItems = [
     color: "#10b981",
     bg: "#ecfdf5",
   },
-  {
-    icon: FaLock,
-    label: "Privacy",
-    desc: "Control your data and visibility",
-    color: "#f43f5e",
-    bg: "#fff1f2",
-  },
-  {
-    icon: FaBell,
-    label: "Notifications",
-    desc: "Alerts and updates preferences",
-    color: "#f59e0b",
-    bg: "#fffbeb",
-  },
-  {
-    icon: FaGlobe,
-    label: "Language & Region",
-    desc: "Set your locale and timezone",
-    color: "#3b82f6",
-    bg: "#eff6ff",
-  },
 ];
 
 const EditProfile = ({ userData, setUserData }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [description, setDescription] = useState("");
   const [profileImg, setProfileImg] = useState(null);
   const [error, setError] = useState("");
   const [hovering, setHovering] = useState(false);
-  const [activeItem, setActiveItem] = useState(null);
+  const [activeItem, setActiveItem] = useState(0); // Default to Account Settings
+  const [loading, setLoading] = useState(false);
+
+  // Security states
+  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
+
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const getGravatar = (userEmail) => {
@@ -85,6 +70,7 @@ const EditProfile = ({ userData, setUserData }) => {
       const imageUrl = getImageUrl(user);
       setName(user.name || user.username || "");
       setEmail(user.email || "");
+      setDescription(user.description || "");
       setProfileImg(imageUrl);
       persistUser({ ...user, avatar: imageUrl, profileImage: imageUrl });
       setError("");
@@ -95,6 +81,44 @@ const EditProfile = ({ userData, setUserData }) => {
   };
 
   useEffect(() => { fetchProfile(); }, []);
+
+  const handleUpdateProfile = async (e) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    try {
+      const token = getToken();
+      const res = await axios.put(`${API_URL}/api/user/update`, { name, description }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      persistUser(res.data.user);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      alert(err.response?.data?.message || "Error updating profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (passwords.new !== passwords.confirm) return alert("Passwords do not match");
+    setLoading(true);
+    try {
+      const token = getToken();
+      await axios.put(`${API_URL}/api/user/update-password`, {
+        currentPassword: passwords.current,
+        newPassword: passwords.new
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert("Password updated successfully!");
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (err) {
+      alert(err.response?.data?.message || "Error updating password");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleImageChange = async (e) => {
     if (!e.target.files?.[0]) return;
@@ -189,24 +213,9 @@ const EditProfile = ({ userData, setUserData }) => {
 
               <p className="ep-email">{email || "your@email.com"}</p>
 
-              <div className="ep-stats-row">
-                <div className="ep-stat">
-                  <span className="ep-stat-num">24</span>
-                  <span className="ep-stat-label">Posts</span>
-                </div>
-                <div className="ep-stat-divider" />
-                <div className="ep-stat">
-                  <span className="ep-stat-num">138</span>
-                  <span className="ep-stat-label">Followers</span>
-                </div>
-                <div className="ep-stat-divider" />
-                <div className="ep-stat">
-                  <span className="ep-stat-num">72</span>
-                  <span className="ep-stat-label">Following</span>
-                </div>
-              </div>
-
-              <button className="ep-save-btn">Save Changes</button>
+              <button className="ep-save-btn" onClick={handleUpdateProfile} disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </button>
             </div>
 
             {/* Right Panel */}
@@ -217,24 +226,93 @@ const EditProfile = ({ userData, setUserData }) => {
                   const Icon = item.icon;
                   const isActive = activeItem === i;
                   return (
-                    <button
-                      key={item.label}
-                      className={`ep-setting-row ${isActive ? "ep-setting-row--active" : ""}`}
-                      style={{ animationDelay: `${i * 60}ms` }}
-                      onClick={() => setActiveItem(isActive ? null : i)}
-                    >
-                      <div className="ep-setting-icon-wrap" style={{ background: item.bg }}>
-                        <Icon size={15} color={item.color} />
-                      </div>
-                      <div className="ep-setting-text">
-                        <span className="ep-setting-name">{item.label}</span>
-                        <span className="ep-setting-desc">{item.desc}</span>
-                      </div>
-                      <FaChevronRight
-                        size={11}
-                        className={`ep-setting-arrow ${isActive ? "ep-setting-arrow--open" : ""}`}
-                      />
-                    </button>
+                    <div key={item.label} className="ep-setting-group">
+                      <button
+                        className={`ep-setting-row ${isActive ? "ep-setting-row--active" : ""}`}
+                        style={{ animationDelay: `${i * 60}ms` }}
+                        onClick={() => setActiveItem(isActive ? null : i)}
+                      >
+                        <div className="ep-setting-icon-wrap" style={{ background: item.bg }}>
+                          <Icon size={15} color={item.color} />
+                        </div>
+                        <div className="ep-setting-text">
+                          <span className="ep-setting-name">{item.label}</span>
+                          <span className="ep-setting-desc">{item.desc}</span>
+                        </div>
+                        <FaChevronRight
+                          size={11}
+                          className={`ep-setting-arrow ${isActive ? "ep-setting-arrow--open" : ""}`}
+                        />
+                      </button>
+
+                      {isActive && (
+                        <div className="ep-active-content">
+                          {i === 0 && (
+                            <div className="ep-inner-form">
+                              <div className="ep-input-group">
+                                <label className="ep-input-label">Full Name</label>
+                                <input
+                                  className="ep-inner-input"
+                                  value={name}
+                                  onChange={(e) => setName(e.target.value)}
+                                  placeholder="Enter your name"
+                                />
+                              </div>
+                              <div className="ep-input-group">
+                                <label className="ep-input-label">Bio / Description</label>
+                                <textarea
+                                  className="ep-textarea"
+                                  value={description}
+                                  onChange={(e) => setDescription(e.target.value)}
+                                  placeholder="Tell us about yourself..."
+                                  rows={4}
+                                />
+                              </div>
+                              <button className="ep-inner-save" onClick={handleUpdateProfile} disabled={loading}>
+                                {loading ? "Updating..." : "Update Details"}
+                              </button>
+                            </div>
+                          )}
+                          {i === 1 && (
+                            <form className="ep-inner-form" onSubmit={handleUpdatePassword}>
+                              <div className="ep-input-group">
+                                <label className="ep-input-label">Current Password</label>
+                                <input
+                                  type="password"
+                                  className="ep-inner-input"
+                                  value={passwords.current}
+                                  onChange={(e) => setPasswords({...passwords, current: e.target.value})}
+                                  required
+                                />
+                              </div>
+                              <div className="ep-input-group">
+                                <label className="ep-input-label">New Password</label>
+                                <input
+                                  type="password"
+                                  className="ep-inner-input"
+                                  value={passwords.new}
+                                  onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                                  required
+                                />
+                              </div>
+                              <div className="ep-input-group">
+                                <label className="ep-input-label">Confirm New Password</label>
+                                <input
+                                  type="password"
+                                  className="ep-inner-input"
+                                  value={passwords.confirm}
+                                  onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                                  required
+                                />
+                              </div>
+                              <button type="submit" className="ep-inner-save" disabled={loading}>
+                                {loading ? "Updating..." : "Change Password"}
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -252,13 +330,12 @@ const styles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .ep-root {
-    min-height: 100vh;
-    background: #f8f7f4;
+    height: 100%;
+    background: #ffffff;
     font-family: 'DM Sans', sans-serif;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
+    flex-direction: column;
+    padding: 24px;
     position: relative;
     overflow: hidden;
   }
@@ -267,29 +344,34 @@ const styles = `
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.45;
+    opacity: 0.35;
     pointer-events: none;
   }
   .ep-blob-1 {
     width: 500px; height: 500px;
-    background: radial-gradient(circle, #c7d2fe 0%, #e0e7ff 100%);
+    background: radial-gradient(circle, #e0e7ff 0%, #f8faff 100%);
     top: -100px; right: -120px;
   }
   .ep-blob-2 {
     width: 380px; height: 380px;
-    background: radial-gradient(circle, #fde68a 0%, #fef3c7 100%);
+    background: radial-gradient(circle, #f1f5f9 0%, #f8faff 100%);
     bottom: -80px; left: -80px;
   }
 
   .ep-container {
     width: 100%;
-    max-width: 860px;
+    max-width: 900px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
     position: relative;
     z-index: 1;
+    margin: 0 auto;
   }
 
   .ep-page-header {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
   }
   .ep-page-tag {
     font-family: 'Sora', sans-serif;
@@ -304,7 +386,7 @@ const styles = `
     font-family: 'Sora', sans-serif;
     font-size: 28px;
     font-weight: 700;
-    color: #1a1a2e;
+    color: #1e1b4b;
     letter-spacing: -0.5px;
   }
 
@@ -316,18 +398,24 @@ const styles = `
     flex-direction: row;
     overflow: hidden;
     border: 1px solid rgba(99,102,241,0.08);
+    flex: 1;
+    min-height: 0;
   }
 
   /* ── LEFT PANEL ── */
   .ep-left {
-    width: 46%;
-    padding: 44px 36px;
+    width: 38%;
+    padding: 32px 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
     background: linear-gradient(160deg, #fafafe 0%, #f3f4ff 100%);
     border-right: 1px solid rgba(99,102,241,0.08);
+    overflow-y: auto;
   }
+
+  .ep-left::-webkit-scrollbar { width: 4px; }
+  .ep-left::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
 
   .ep-avatar-wrap {
     position: relative;
@@ -335,8 +423,8 @@ const styles = `
   }
 
   .ep-avatar-ring {
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     border-radius: 50%;
     cursor: pointer;
     position: relative;
@@ -344,6 +432,7 @@ const styles = `
     border: 3px solid #fff;
     box-shadow: 0 0 0 3px #e0e7ff, 0 8px 24px rgba(99,102,241,0.2);
     transition: box-shadow 0.25s, transform 0.25s;
+    flex-shrink: 0;
   }
   .ep-avatar-ring--hover {
     box-shadow: 0 0 0 3px #6366f1, 0 10px 30px rgba(99,102,241,0.35);
@@ -409,7 +498,7 @@ const styles = `
     font-family: 'Sora', sans-serif;
     font-size: 20px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1e1b4b;
     background: transparent;
     border: none;
     outline: none;
@@ -428,9 +517,9 @@ const styles = `
   }
 
   .ep-email {
-    font-size: 13.5px;
+    font-size: 13px;
     color: #888;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
     font-weight: 300;
     font-style: italic;
     letter-spacing: 0.01em;
@@ -439,29 +528,29 @@ const styles = `
   .ep-stats-row {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     background: #fff;
     border-radius: 16px;
-    padding: 16px 24px;
+    padding: 12px 20px;
     box-shadow: 0 2px 12px rgba(99,102,241,0.07);
     border: 1px solid rgba(99,102,241,0.08);
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     width: 100%;
-    max-width: 280px;
     justify-content: center;
+    flex-shrink: 0;
   }
   .ep-stat {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
   }
   .ep-stat-num {
     font-family: 'Sora', sans-serif;
-    font-size: 17px; font-weight: 700; color: #1a1a2e;
+    font-size: 17px; font-weight: 700; color: #1e1b4b;
   }
   .ep-stat-label {
-    font-size: 11px; color: #aaa; font-weight: 400; letter-spacing: 0.03em;
+    font-size: 11px; color: #94a3b8; font-weight: 400; letter-spacing: 0.03em;
   }
   .ep-stat-divider {
-    width: 1px; height: 28px; background: #e8e8f0;
+    width: 1px; height: 28px; background: #e2e8f0;
   }
 
   .ep-save-btn {
@@ -489,10 +578,15 @@ const styles = `
   /* ── RIGHT PANEL ── */
   .ep-right {
     flex: 1;
-    padding: 44px 36px;
+    padding: 32px 24px;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
   }
+
+  .ep-right::-webkit-scrollbar { width: 4px; }
+  .ep-right::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
 
   .ep-section-label {
     font-family: 'Sora', sans-serif;
@@ -553,10 +647,10 @@ const styles = `
   .ep-setting-name {
     font-family: 'Sora', sans-serif;
     font-size: 14px; font-weight: 600;
-    color: #1a1a2e;
+    color: #1e1b4b;
   }
   .ep-setting-desc {
-    font-size: 12px; color: #aaa; font-weight: 300;
+    font-size: 12px; color: #94a3b8; font-weight: 300;
   }
 
   .ep-setting-arrow {
@@ -566,6 +660,76 @@ const styles = `
   }
   .ep-setting-arrow--open { transform: rotate(90deg); color: #6366f1; }
   .ep-setting-row:hover .ep-setting-arrow { color: #a5b4fc; }
+
+  /* ── ACTIVE SETTINGS CONTENT ── */
+  .ep-active-content {
+    padding: 16px;
+    margin: 0 16px 8px;
+    background: #fff;
+    border: 1px solid rgba(99,102,241,0.1);
+    border-radius: 12px;
+    animation: ep-fade-down 0.3s ease-out;
+  }
+  @keyframes ep-fade-down {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .ep-inner-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ep-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ep-input-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ep-inner-input, .ep-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #eee;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: #333;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .ep-inner-input:focus, .ep-textarea:focus {
+    border-color: #6366f1;
+  }
+  .ep-textarea {
+    resize: none;
+  }
+  .ep-inner-save {
+    padding: 10px;
+    border-radius: 8px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+    transition: opacity 0.2s;
+  }
+  .ep-inner-save:hover { opacity: 0.9; }
+  .ep-inner-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .ep-coming-soon {
+    font-size: 13px;
+    color: #999;
+    text-align: center;
+    font-style: italic;
+    padding: 20px 0;
+  }
 
   /* ── ERROR STATE ── */
   .ep-error-state {

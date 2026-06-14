@@ -6,7 +6,7 @@ const footerStyles = `
 
   .ft-root {
     font-family: 'Poppins', sans-serif;
-    background: #f8f7ff;
+    background: #f8faff;
     color: #1e1b4b;
     position: relative;
     overflow: hidden;
@@ -48,7 +48,7 @@ const footerStyles = `
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, transparent 60%, rgba(248,247,255,0.9) 100%);
+    background: linear-gradient(180deg, transparent 60%, rgba(248,250,255,0.9) 100%);
   }
 
   /* Top accent bar */

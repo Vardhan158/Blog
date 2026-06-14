@@ -26,20 +26,21 @@ const STYLES = `
   }
 
   .db-root {
-    --ink:    #1a1714;
-    --ink2:   #4a4540;
-    --ink3:   #8a847c;
-    --ink4:   #b8b2a9;
-    --paper:  #faf8f4;
-    --paper2: #f2ede6;
-    --paper3: #e8e2d8;
-    --rule:   #e0dbd2;
-    --accent: #c0392b;
+    --ink:    #1e1b4b;
+    --ink2:   #475569;
+    --ink3:   #94a3b8;
+    --ink4:   #cbd5e1;
+    --paper:  #ffffff;
+    --paper2: #f8faff;
+    --paper3: #f1f5f9;
+    --rule:   #e2e8f0;
+    --accent: #6366f1;
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
     background: var(--paper2);
     font-family: 'DM Sans', sans-serif;
     color: var(--ink);
+    overflow: hidden;
   }
 
   /* ── Main content area ── */
@@ -48,12 +49,16 @@ const STYLES = `
     min-width: 0;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    overflow: hidden;
   }
 
   .db-content {
     flex: 1;
-    padding: clamp(24px, 4vw, 44px) clamp(20px, 4vw, 44px);
-    animation: fadeUp 0.4s ease both;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   /* ── Loading skeleton ── */
@@ -130,10 +135,10 @@ const STYLES = `
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    background: var(--accent);
-    color: #fff;
+    background: #ede9fe;
+    color: var(--accent);
     padding: 3px 10px;
-    border-radius: 2px;
+    border-radius: 20px;
     margin-bottom: 10px;
   }
 
@@ -175,7 +180,8 @@ const STYLES = `
     color: var(--ink3);
     font-weight: 500;
   }
-  .db-stat-icon { font-size: 13px; }
+  .db-stat-icon.heart { color: #f472b6; }
+  .db-stat-icon.comment { color: var(--accent); }
 
   /* Comment list inside card */
   .db-comments-inner {
@@ -435,11 +441,11 @@ export default function Dashboard() {
 
                 <div className="db-stats-row">
                   <span className="db-stat">
-                    <span className="db-stat-icon">♥</span>
+                    <span className="db-stat-icon heart">♥</span>
                     {Array.isArray(blog.likes) ? blog.likes.length : 0}
                   </span>
                   <span className="db-stat">
-                    <span className="db-stat-icon">💬</span>
+                    <span className="db-stat-icon comment">💬</span>
                     {comments.length}
                   </span>
                 </div>
@@ -515,10 +521,10 @@ export default function Dashboard() {
   };
 
   return (
-    <>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <style>{STYLES}</style>
       <Navbar userData={userData} />
-      <div className="db-root">
+      <div className="db-root" style={{ flex: 1, minHeight: 0 }}>
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -528,6 +534,6 @@ export default function Dashboard() {
           {renderContent()}
         </main>
       </div>
-    </>
+    </div>
   );
 }

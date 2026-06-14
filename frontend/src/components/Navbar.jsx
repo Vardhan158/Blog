@@ -190,7 +190,7 @@ const Navbar = () => {
       <nav
         style={{
           fontFamily: "'Poppins', sans-serif",
-          background: "#ffffff",
+          background: "#f8faff",
           borderBottom: "1px solid rgba(99,102,241,0.08)",
           boxShadow: "0 1px 12px rgba(99,102,241,0.06)",
           position: "sticky",

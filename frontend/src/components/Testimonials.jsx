@@ -33,7 +33,7 @@ const testimonials = [
 
 export default function Testimonials() {
   return (
-    <section style={{ fontFamily: "'Poppins', sans-serif", padding: "3rem 1.5rem 2rem", background: "#fdf9f7" }}>
+    <section style={{ fontFamily: "'Poppins', sans-serif", padding: "3rem 1.5rem 2rem", background: "#f8faff" }}>
       <p style={{ textAlign: "center", fontSize: "12px", fontWeight: 500, letterSpacing: ".12em", textTransform: "uppercase", color: "#f26741", marginBottom: ".4rem" }}>
         What people say
       </p>

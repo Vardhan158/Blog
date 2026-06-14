@@ -154,6 +154,26 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const updatePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) return res.status(400).json({ success: false, message: "Invalid current password" });
+
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.error("Error updating password:", err);
+    res.status(500).json({ success: false, message: "Error updating password" });
+  }
+};
+
 const getUserBlogs = async (req, res) => {
   try {
     const blogs = await Blog.find({ author: req.user._id })
@@ -229,6 +249,7 @@ module.exports = {
   getDashboardStats,
   getProfile,
   updateProfile,
+  updatePassword,
   getUserBlogs,
   subscribeToPush,
   unsubscribeFromPush,

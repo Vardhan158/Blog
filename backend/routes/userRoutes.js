@@ -8,6 +8,7 @@ const {
   uploadProfileImage,
   getProfile,
   updateProfile,
+  updatePassword,
   getUserBlogs,
   subscribeToPush,
   unsubscribeFromPush,
@@ -54,6 +55,9 @@ router.get("/profile", authMiddleware, getProfile);
 
 // ✅ Update profile info (name, description)
 router.put("/update", authMiddleware, updateProfile);
+
+// ✅ Update password
+router.put("/update-password", authMiddleware, updatePassword);
 
 // ✅ Get user blogs (user dashboard)
 router.get("/user-blogs", authMiddleware, getUserBlogs);

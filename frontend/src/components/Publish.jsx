@@ -126,9 +126,9 @@ const Publish = () => {
       <div
         className="pub-root"
         style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #f0f9ff 100%)",
-          padding: "40px 16px 60px",
+          minHeight: "100%",
+          background: "#ffffff",
+          padding: "32px 24px",
         }}
       >
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
